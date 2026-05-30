@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { Module, forwardRef } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { HttpModule } from '@nestjs/axios'
 import { Answer, AnswerSchema } from './answer.schema'
@@ -14,7 +14,7 @@ import { MetaModule } from '../admin/meta.module'
   imports: [
     MongooseModule.forFeature([{ name: Answer.name, schema: AnswerSchema }]),
     HttpModule,
-    QuestionsModule,
+    forwardRef(() => QuestionsModule),
     FaqsModule,
     UsersModule,
     AdminModule,

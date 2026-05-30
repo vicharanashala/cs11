@@ -25,13 +25,87 @@ export class FaqsService {
     page?: number
     limit?: number
     isAdmin?: boolean
+    search?: string
   }): Promise<{ data: FaqDocument[]; totalCount: number; page: number }> {
-    const { category, tags, status, page = 1, limit = 20, isAdmin = false } = filters
+    const { category, tags, status, page = 1, limit = 20, isAdmin = false, search } = filters
 
+    const skip = (page - 1) * limit
+
+    // ATLAS SEARCH INDEX REQUIRED IN PRODUCTION
+    // In MongoDB Atlas UI: Search Indexes → Create Index → JSON Editor
+    // Database: your_db Collection: faqs Index name: faq_search
+    // {
+    // "mappings": {
+    // "dynamic": false,
+    // "fields": {
+    // "title": { "type": "string", "analyzer": "lucene.standard" },
+    // "body": { "type": "string", "analyzer": "lucene.standard" },
+    // "tags": { "type": "string", "analyzer": "lucene.standard" },
+    // "status": { "type": "string" },
+    // "category": { "type": "objectId" }
+    // }
+    // }
+    // }
+    if (search) {
+      try {
+        // Build the $match portion for status + category (applied after $search)
+        const postMatch: Record<string, unknown> = { status: 'published' }
+        if (category) {
+          postMatch.category = new Types.ObjectId(category)
+        }
+
+        const pipeline = [
+          {
+            $search: {
+              index: 'faq_search',
+              compound: {
+                should: [
+                  {
+                    text: {
+                      query: search,
+                      path: 'title',
+                      boost: { value: 3 },
+                      fuzzy: { maxEdits: 1, prefixLength: 2 },
+                    },
+                  },
+                  {
+                    text: {
+                      query: search,
+                      path: { body: 1, tags: 1 },
+                      boost: { value: 1 },
+                      fuzzy: { maxEdits: 1, prefixLength: 2 },
+                    },
+                  },
+                ],
+                minimumShouldMatch: 1,
+              },
+            },
+          },
+          { $match: postMatch },
+          {
+            $facet: {
+              data: [{ $skip: skip }, { $limit: limit }],
+              meta: [{ $count: 'total' }],
+            },
+          },
+        ]
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const results = await this.faqModel.aggregate(pipeline as any[]).exec()
+        const facet = results[0]
+        const data: FaqDocument[] = facet.data ?? []
+        const totalCount: number = facet.meta[0]?.total ?? 0
+
+        return { data, totalCount, page }
+      } catch (err) {
+        // Fall back to case-insensitive regex on title for local dev (no Atlas Search index)
+        console.warn('[FaqsService] Atlas Search unavailable, falling back to regex:', (err as Error).message)
+      }
+    }
+
+    // ── No search: original plain Mongoose find ──────────────────────────────
     const query: Record<string, unknown> = {}
 
-    // Admins: default to published unless explicit status filter is passed
-    // Non-admins: always published
     if (status) {
       query.status = status
     } else if (!isAdmin) {
@@ -47,8 +121,6 @@ export class FaqsService {
     if (tags && tags.length > 0) {
       query.tags = { $all: tags }
     }
-
-    const skip = (page - 1) * limit
 
     const [data, totalCount] = await Promise.all([
       this.faqModel

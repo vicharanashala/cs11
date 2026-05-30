@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -17,7 +17,7 @@ export function SignupPage() {
     mutationFn: () => api.post('/auth/register', { name, email, password }),
     onSuccess: ({ data }) => {
       login(data.token)
-      navigate('/faqs')
+      navigate({ to: '/faqs' })
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } }

@@ -21,4 +21,3 @@
 | **Member** | Vetcha Venkata Sai Pavan |
 
 > **Team No.** 11 &nbsp;·&nbsp; **Team Count** 11
-

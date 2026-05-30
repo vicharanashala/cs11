@@ -168,22 +168,43 @@ export class AnswersService {
 
   async promoteToFaq(
     questionId: string,
-    dto: { answerId: string; title: string; category: string; tags?: string[] },
+    dto: { answerId?: string; title: string; category: string; tags?: string[] },
     adminUserId: string,
   ): Promise<void> {
     const session = await this.connection.startSession()
     session.startTransaction()
 
     try {
-      const answer = await this.connection
-        .collection('answers')
-        .findOne({ _id: new Types.ObjectId(dto.answerId) }, { session })
-
       const question = await this.connection
         .collection('questions')
         .findOne({ _id: new Types.ObjectId(questionId) }, { session })
 
-      if (!answer || !question) throw new NotFoundException('Answer or question not found')
+      if (!question) throw new NotFoundException('Question not found')
+
+      // Resolve answerId: explicit body value, or fall back to the accepted answer
+      let targetAnswerId: string | undefined = dto.answerId
+
+      if (!targetAnswerId) {
+        const acceptedAnswer = await this.connection
+          .collection('answers')
+          .findOne(
+            { questionId: new Types.ObjectId(questionId), isAccepted: true },
+            { session },
+          )
+        targetAnswerId = acceptedAnswer?._id?.toString()
+      }
+
+      if (!targetAnswerId) {
+        throw new BadRequestException(
+          'No answerId provided and no accepted answer found on this question. Provide an answerId or accept an answer first.',
+        )
+      }
+
+      const answer = await this.connection
+        .collection('answers')
+        .findOne({ _id: new Types.ObjectId(targetAnswerId) }, { session })
+
+      if (!answer) throw new NotFoundException('Answer not found')
 
       // Create the FAQ
       const faqBody = `${question.body}\n\n---\nAccepted Answer:\n${answer.body}`
@@ -208,7 +229,7 @@ export class AnswersService {
       // Mark answer as official admin answer
       await this.connection
         .collection('answers')
-        .updateOne({ _id: new Types.ObjectId(dto.answerId) }, { $set: { isOfficialAdminAnswer: true } }, { session })
+        .updateOne({ _id: new Types.ObjectId(targetAnswerId) }, { $set: { isOfficialAdminAnswer: true } }, { session })
 
       // Close the question
       await this.connection

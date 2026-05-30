@@ -6,7 +6,6 @@ interface FaqCardProps {
 }
 
 export function FaqCard({ faq }: FaqCardProps) {
-  const authorName = typeof faq.author === 'object' ? faq.author.name : 'Admin'
   const categoryName = faq.category
 
   return (

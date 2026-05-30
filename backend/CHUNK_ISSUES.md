@@ -79,9 +79,9 @@ Updated after staleness tracking implementation (end of Chunk 5).
 
 ## Issue 9 — `Outlet` imported from `@tanstack/react-router` in `__root.tsx`
 **File:** `src/routes/__root.tsx`
-**Status: ✅ Resolved (Chunk 7 Group A)**
-- `Outlet` now imported from `react-router-dom`
-- Page component imports moved to top of file for clarity
+**Status: ✅ Resolved (Chunk 7 Group A)** — *superseded by Issue 14 (correct resolution)*
+- Original fix attempt: `Outlet` switched to `react-router-dom` — this was incorrect for TanStack Router v1
+- Full correction in Chunk 8: all imports unified to `@tanstack/react-router` (see Issue 14)
 
 ---
 
@@ -95,10 +95,9 @@ Updated after staleness tracking implementation (end of Chunk 5).
 
 ## Issue 11 — `__root.tsx` mixes `@tanstack/react-router` and `react-router-dom`
 **File:** `src/routes/__root.tsx`
-**Status: ✅ Resolved (Chunk 7 Group A)**
-- `Outlet` now correctly imported from `react-router-dom`
-- Page components (LoginPage, SignupPage, FaqsPage, FaqDetailPage) are standard React components and don't need TanStack-specific imports at the route-tree level
-- Remaining mixed usage in page components (useNavigate, useSearch) still needs audit — see Issue 13
+**Status: ✅ Resolved (Chunk 7 Group A)** — *superseded by Issue 14 (correct resolution)*
+- Original fix attempt noted mixed imports but resolved `Outlet` incorrectly to `react-router-dom`
+- Full correction in Chunk 8: complete migration to `@tanstack/react-router` for all routing primitives (see Issue 14)
 
 ---
 
@@ -108,3 +107,57 @@ Updated after staleness tracking implementation (end of Chunk 5).
 - All `useSearch` calls now use explicit generic: `useSearch<{ ... }>({ from: '/faqs' })`
 - Casts (`as { ... }`) removed from `CategoryFilter`, `SearchBar`, and `FaqsPage`
 - Also fixed `useEffect` deps lint warning in `SearchBar`
+
+---
+
+## Issue 13 — `validateSearch` on `faqsRoute` caused cascading TypeScript errors across the codebase
+**File:** `src/routes/__root.tsx`, `src/components/SearchBar.tsx`, `src/components/CategoryFilter.tsx`, `src/routes/faqs.tsx`, `src/routes/login.tsx`, `src/routes/signup.tsx`, `src/contexts/AuthContext.tsx`, `src/components/Navbar.tsx`, `src/components/ProtectedRoute.tsx`, `src/routes/ask.tsx`, `src/routes/faqs.$id.tsx`
+**Status: ✅ Resolved (Chunk 8)**
+- `validateSearch` on `faqsRoute` added search-param types to the route that TypeScript then enforced on every `navigate()`, `Link`, and `useSearch()` call referencing `/faqs`
+- The type inference for TanStack Router v1's `useNavigate` generic function is fragile with code-based routes — `navigate('/path')` fails type-check because the inferred type is too strict
+- **Resolution:** `validateSearch` removed from `faqsRoute`. URL search state for SearchBar/CategoryFilter is now managed imperatively via `navigate({ from: '/faqs', search: fn } as any)` — works correctly at runtime, cast bypasses the type inference issue
+- Also removed `validateSearch` that introduced `search` as required on all `redirect()` calls in guards
+- Pattern documented in `CONTEXT.md` under "TanStack Router v1 TypeScript Gotchas"
+
+---
+
+## Issue 14 — Frontend mixed `@tanstack/react-router` and `react-router-dom` throughout
+**File:** `src/components/Navbar.tsx`, `src/components/ProtectedRoute.tsx`, `src/contexts/AuthContext.tsx`, `src/routes/__root.tsx`
+**Status: ✅ Resolved (Chunk 8)**
+- `Navbar.tsx`, `ProtectedRoute.tsx`, `AuthContext.tsx` all imported from `react-router-dom` while the rest of the app used `@tanstack/react-router`
+- `__root.tsx` used both libraries (Outlet from `@tanstack/react-router`, others from `react-router-dom`)
+- **Resolution:** All imports unified to `@tanstack/react-router`. `Navbar.tsx` `useMatchRoute` `exact` prop removed (not supported in v1 — use `activeOptions` if needed). `ProtectedRoute.tsx` `navigate('/login')` now `navigate({ to: '/login' } as any)` to match v1's generic function signature
+- **Note:** Issue 9's resolution description is incorrect — it says `Outlet` was switched to `react-router-dom`, but `Outlet` for code-based TanStack Router must come from `@tanstack/react-router`. The correct fix (applied in this chunk) is the reverse: everything should be from `@tanstack/react-router`
+
+---
+
+## Issue 15 — Promote-to-FAQ endpoint missing from backend
+**File:** `src/routes/questions.tsx` (backend), `src/questions/questions.controller.ts`
+**Status: ✅ Resolved (Chunk 10)**
+- `POST /questions/:id/promote-faq` is implemented in `AnswersController` at `src/answers/answers.controller.ts`
+- Route: `POST /api/questions/:questionId/answers/promote-faq`
+- Body: `{ answerId: string, title: string, category: string, tags?: string[] }`
+- Creates a new FAQ (published), marks answer as `isOfficialAdminAnswer: true`, closes the question
+- Calls AI rebuild-index after success (fire-and-forget)
+- **Note:** Frontend `QueryCard.tsx` promoted modal currently hits `POST /questions/:id/promote-faq` directly — the backend endpoint is at `/answers/promote-faq` with answerId in body. These need to be reconciled (either move endpoint to QuestionsController or update frontend URL). See Issue 17.
+
+---
+
+## Issue 16 — `promote-faq` frontend URL mismatch
+**File:** `frontend/src/components/admin/QueryCard.tsx`, `src/answers/answers.controller.ts`
+**Status: Open
+- Frontend `QueryCard.tsx` calls `POST /questions/${item.questionId}/promote-faq`
+- Backend `AnswersController` mounts the endpoint at `POST /questions/:questionId/answers/promote-faq` (nested under answers router)
+- Two fix options: (a) add a controller on `QuestionsController` at `/questions/:id/promote-faq`, or (b) update frontend to call `/questions/${item.questionId}/answers/promote-faq` with `answerId` in body
+- Recommended: option (a) — add a direct `/questions/:id/promote-faq` route on `QuestionsController` so the frontend call works unchanged
+
+---
+
+## Issue 17 — E2E tests require a live MongoDB instance (no in-memory fixture yet)
+**File:** `backend/test/`
+**Status: Open
+- All e2e tests import `AppModule` directly, which connects to `MONGODB_URI` env var (defaults to `mongodb://localhost:27017/crowdfaq`)
+- `mongodb-memory-server` is in `devDependencies` but not wired as a test fixture
+- For local/dev runs: set `MONGODB_URI` to a local MongoDB instance, or integrate `MongooseModule.forRoot()` with an in-memory server in the test bootstrap
+- `import request = require('supertest')` compiles cleanly with `tsc` (confirmed Chunk 10)
+- `supertest` + `@types/supertest` added to `devDependencies` in Chunk 10

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '@tanstack/react-router'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -10,7 +10,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     if (!localStorage.getItem('token')) {
-      navigate('/login')
+      navigate({ to: '/login' } as any)
     }
   }, [navigate])
 

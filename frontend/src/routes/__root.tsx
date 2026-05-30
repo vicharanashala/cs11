@@ -1,9 +1,15 @@
-import { createRouter, createRoute, createRootRoute, redirect } from '@tanstack/react-router'
-import { Outlet } from 'react-router-dom'
+import { createRouter, createRoute, createRootRoute, redirect, Outlet } from '@tanstack/react-router'
 import { LoginPage } from './login'
 import { SignupPage } from './signup'
 import { FaqsPage } from './faqs'
 import { FaqDetailPage } from './faqs.$id'
+import { AskPage } from './ask'
+import { QuestionsPage } from './questions'
+import { QuestionDetailPage } from './questions.$id'
+import { AdminPage } from './admin'
+import { AdminQueriesPage } from './admin.queries'
+import { AdminFaqsPage } from './admin.faqs'
+import { AdminAnalyticsPage } from './admin.analytics'
 import { Navbar } from '@/components/Navbar'
 
 // ─── Guard helpers ────────────────────────────────────────────────────────────
@@ -20,7 +26,7 @@ function requireAdmin() {
   if (!user) throw redirect({ to: '/login' })
   const { role } = JSON.parse(user) as { role: string }
   if (role !== 'admin' && role !== 'superadmin') {
-    throw redirect({ to: '/faqs' })
+    throw redirect({ to: '/faqs', search: {} })
   }
 }
 
@@ -37,23 +43,12 @@ const rootRoute = createRootRoute({
   ),
 })
 
-// ─── Placeholder components for stub routes ───────────────────────────────────
-
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-      <p className="mt-2 text-gray-500">This page is under construction.</p>
-    </div>
-  )
-}
-
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  beforeLoad: () => { throw redirect({ to: '/faqs' }) },
+  beforeLoad: () => { throw redirect({ to: '/faqs', search: {} }) },
   component: () => null,
 })
 
@@ -61,7 +56,7 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   beforeLoad: () => {
-    if (localStorage.getItem('token')) throw redirect({ to: '/faqs' })
+    if (localStorage.getItem('token')) throw redirect({ to: '/faqs', search: {} })
   },
   component: () => <LoginPage />,
 })
@@ -70,7 +65,7 @@ const signupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/signup',
   beforeLoad: () => {
-    if (localStorage.getItem('token')) throw redirect({ to: '/faqs' })
+    if (localStorage.getItem('token')) throw redirect({ to: '/faqs', search: {} })
   },
   component: () => <SignupPage />,
 })
@@ -93,35 +88,51 @@ const askRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ask',
   beforeLoad: () => requireAuth(),
-  component: () => <Placeholder title="Ask a Question" />,
+  component: () => <AskPage />,
 })
 
 const questionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/questions',
   beforeLoad: () => requireAuth(),
-  component: () => <Placeholder title="My Questions" />,
+  component: () => <QuestionsPage />,
 })
 
 const questionDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/questions/$id',
   beforeLoad: () => requireAuth(),
-  component: ({ params }) => <Placeholder title={`Question: ${params.id}`} />,
+  component: () => <QuestionDetailPage />,
 })
 
-const adminRoute = createRoute({
+// ─── Admin section (has its own sidebar layout) ───────────────────────────────
+
+const adminLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin',
   beforeLoad: () => requireAdmin(),
-  component: () => <Placeholder title="Admin Dashboard" />,
+  component: () => <AdminPage />,
 })
 
 const adminQueriesRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/admin/queries',
+  getParentRoute: () => adminLayoutRoute,
+  path: 'queries',
   beforeLoad: () => requireAdmin(),
-  component: () => <Placeholder title="Resolution Queue" />,
+  component: () => <AdminQueriesPage />,
+})
+
+const adminFaqsRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: 'faqs',
+  beforeLoad: () => requireAdmin(),
+  component: () => <AdminFaqsPage />,
+})
+
+const adminAnalyticsRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: 'analytics',
+  beforeLoad: () => requireAdmin(),
+  component: () => <AdminAnalyticsPage />,
 })
 
 // ─── Route tree ───────────────────────────────────────────────────────────────
@@ -135,8 +146,10 @@ const routeTree = rootRoute.addChildren([
   askRoute,
   questionsRoute,
   questionDetailRoute,
-  adminRoute,
+  adminLayoutRoute,
   adminQueriesRoute,
+  adminFaqsRoute,
+  adminAnalyticsRoute,
 ])
 
 export const router = createRouter({ routeTree })
@@ -146,4 +159,3 @@ declare module '@tanstack/react-router' {
     router: typeof router
   }
 }
-

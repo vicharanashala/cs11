@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate, useMatchRoute } from 'react-router-dom'
+import { Link, useNavigate, useMatchRoute } from '@tanstack/react-router'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface NavLinkProps {
@@ -9,7 +9,7 @@ interface NavLinkProps {
 
 function NavLink({ to, children }: NavLinkProps) {
   const matchRoute = useMatchRoute()
-  const isActive = matchRoute({ to, exact: to === '/' || to === '/faqs' }) ||
+  const isActive = matchRoute({ to } as any) ||
     (to !== '/' && window.location.pathname.startsWith(to))
 
   return (
@@ -44,7 +44,7 @@ export function Navbar() {
 
   const handleLogout = () => {
     logout()
-    navigate('/login')
+    navigate({ to: '/login' } as any)
   }
 
   return (

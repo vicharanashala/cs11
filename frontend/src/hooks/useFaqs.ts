@@ -15,7 +15,8 @@ async function fetchFaqs({ search = '', category = '', page = 1 }: FaqsParams): 
   params.set('page', String(page))
   params.set('limit', '10')
   const { data } = await api.get(`/faqs?${params}`)
-  return data
+  // Backend returns totalCount; rename to total so PaginatedResponse type matches
+  return { data: data.data, total: data.totalCount ?? 0, page: data.page, limit: data.limit }
 }
 
 export function useFaqs(search: string, category: string) {

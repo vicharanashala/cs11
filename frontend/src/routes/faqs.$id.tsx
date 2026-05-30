@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from '@tanstack/react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useFaq } from '@/hooks/useFaq'
 import api from '@/lib/api'
@@ -105,7 +105,8 @@ function SimpleMarkdown({ text }: { text: string }) {
 }
 
 export function FaqDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { id } = useParams({ from: '/faqs/$id' } as any)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [toast, setToast] = useState<string | null>(null)
@@ -228,7 +229,7 @@ export function FaqDetailPage() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
           </svg>
-          {faq.upvotes + (voteMutation.variables !== undefined && !voteMutation.isError ? 1 : 0)}
+          {faq.upvotes + (voteMutation.variables !== undefined ? 1 : 0)}
         </button>
       </div>
 
@@ -261,7 +262,7 @@ export function FaqDetailPage() {
       {/* Follow-up */}
       <div className="flex justify-end">
         <button
-          onClick={() => navigate(`/ask?ref=${encodeURIComponent(faq.title)}`)}
+          onClick={() => navigate({ to: '/ask', search: { ref: faq.title } } as any)}
           className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
         >
           Ask a follow-up question →

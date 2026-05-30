@@ -5,6 +5,13 @@ import { Question, QuestionDocument } from './question.schema'
 import { CreateQuestionDto } from './dtos/create-question.dto'
 import { FaqsService } from '../faqs/faqs.service'
 import { AiMatcherService } from './ai-matcher.service'
+import { IntentDetectorService } from './intent/intent-detector.service'
+import { DocumentStatusService } from './document-status.service'
+
+export type AskResponse =
+  | { questionId: string; message: string }
+  | { aiMatch: true; faq: { id: string; title: string; confidence: number } }
+  | { intentMatch: true; intentType: 'document_status_check'; statusResponse: Awaited<ReturnType<DocumentStatusService['getStatusForStudent']>> }
 
 @Injectable()
 export class QuestionsService {
@@ -12,7 +19,38 @@ export class QuestionsService {
     @InjectModel(Question.name) private questionModel: Model<QuestionDocument>,
     private readonly aiMatcher: AiMatcherService,
     private readonly faqsService: FaqsService,
+    private readonly intentDetector: IntentDetectorService,
+    private readonly documentStatus: DocumentStatusService,
   ) {}
+
+  /**
+   * Top-level intent + AI match check.
+   * Returns early with an intent response, an AI-match response,
+   * or falls through so the caller can save to MongoDB.
+   */
+  async checkIntentAndMatch(
+    dto: CreateQuestionDto,
+    userId: string,
+  ): Promise<AskResponse | null> {
+    const queryText = `${dto.title} ${dto.body}`
+
+    // 1. Intent detection — highest priority
+    const intent = this.intentDetector.detect(queryText)
+    if (intent === 'document_status_check') {
+      const statusResponse = await this.documentStatus.getStatusForStudent(userId)
+      return { intentMatch: true, intentType: 'document_status_check', statusResponse }
+    }
+
+    // 2. AI / FAQ match
+    const match = await this.aiMatcher.match(queryText)
+    if (match.matched && match.faqId) {
+      const faq = await this.faqsService.findById(match.faqId)
+      return { aiMatch: true, faq: { id: faq._id.toString(), title: faq.title, confidence: match.confidence ?? 0 } }
+    }
+
+    // 3. No intent, no match — caller should save to MongoDB
+    return null
+  }
 
   async create(dto: CreateQuestionDto, userId: string): Promise<{ questionId: string; message: string }> {
     const question = new this.questionModel({
@@ -39,7 +77,8 @@ export class QuestionsService {
       if (userId) {
         query.askedBy = new Types.ObjectId(userId)
       } else {
-        query.askedBy = new Types.ObjectId('000000000000000000000000') // impossible ObjectId — returns nothing
+        // impossible ObjectId — returns nothing
+        query.askedBy = new Types.ObjectId('000000000000000000000000')
       }
     }
 

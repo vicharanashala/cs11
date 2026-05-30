@@ -6,10 +6,10 @@ export type MetaDocument = Meta & Document
 @Schema({ timestamps: false, versionKey: false })
 export class Meta {
   @Prop({ required: true, unique: true })
-  _id: string
+  key!: string
 
   @Prop()
-  lastIndexRebuild: Date
+  lastIndexRebuild!: Date
 }
 
 export const MetaSchema = SchemaFactory.createForClass(Meta)

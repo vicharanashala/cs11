@@ -1,17 +1,20 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 
-export function SearchBar() {
-  const navigate = useNavigate()
-  const searchParams = useSearch<{ search?: string }>({ from: '/faqs' })
-  const [value, setValue] = useState(searchParams.search ?? '')
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+interface SearchState {
+  search?: string
+}
 
-  // Sync with URL on back/forward navigation
-  useEffect(() => {
-    setValue(searchParams.search ?? '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.search])
+interface SearchBarProps {
+  /** Route whose search params to update. Defaults to '/faqs'. */
+  baseRoute?: string
+}
+
+export function SearchBar({ baseRoute = '/faqs' }: SearchBarProps) {
+  const navigate = useNavigate()
+  const search = useSearch({ from: baseRoute }) as SearchState
+  const [value, setValue] = useState('')
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value
@@ -19,8 +22,8 @@ export function SearchBar() {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       navigate({
-        from: '/faqs',
-        search: (prev) => ({ ...prev, search: val || undefined }),
+        from: baseRoute as '/faqs',
+        search: { ...search, search: val || undefined },
       })
     }, 300)
   }
@@ -28,8 +31,8 @@ export function SearchBar() {
   function handleClear() {
     setValue('')
     navigate({
-      from: '/faqs',
-      search: (prev) => ({ ...prev, search: undefined }),
+      from: baseRoute as '/faqs',
+      search: { ...search, search: undefined },
     })
   }
 

@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '@tanstack/react-router'
 import api from '@/lib/api'
 
 interface AuthUser {
-  id: string
+  /** Matches `user._id` (MongoDB ObjectId) returned by `/auth/me` */
+  _id: string
   name: string
   role: 'intern' | 'admin' | 'superadmin'
 }
@@ -12,7 +13,7 @@ interface AuthContextValue {
   user: AuthUser | null
   token: string | null
   isLoading: boolean
-  login: (token: string) => Promise<void>
+  login: (token: string) => void
   logout: () => void
 }
 
@@ -22,7 +23,8 @@ function decodeJwt(token: string): AuthUser | null {
   try {
     const payload = token.split('.')[1]
     const decoded = JSON.parse(atob(payload))
-    return { id: decoded.userId, name: decoded.name ?? '', role: decoded.role }
+    // JWT claim "userId" holds the MongoDB ObjectId string
+    return { _id: decoded.userId, name: decoded.name ?? '', role: decoded.role }
   } catch {
     return null
   }
@@ -34,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Hydrate from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem('token')
     if (stored) {
@@ -42,9 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const decoded = decodeJwt(stored)
       if (decoded) {
         setUser(decoded)
-        // Verify token is still valid with the server
         api.get('/auth/me')
-          .then(({ data }) => setUser({ id: data._id, name: data.name, role: data.role }))
+          .then(({ data }) => setUser({ _id: data._id, name: data.name, role: data.role }))
           .catch(() => {
             localStorage.removeItem('token')
             setUser(null)
@@ -60,17 +60,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const login = useCallback(async (newToken: string) => {
+  const login = useCallback((newToken: string) => {
     localStorage.setItem('token', newToken)
     setToken(newToken)
     const decoded = decodeJwt(newToken)
     if (decoded) setUser(decoded)
-    // Fetch full user from backend
-    const { data } = await api.get('/auth/me')
-    const fullUser = { id: data._id, name: data.name, role: data.role }
-    setUser(fullUser)
-    localStorage.setItem('user', JSON.stringify(fullUser))
-    navigate('/faqs')
+    api.get('/auth/me')
+      .then(({ data }) => {
+        const fullUser = { _id: data._id, name: data.name, role: data.role }
+        setUser(fullUser)
+        localStorage.setItem('user', JSON.stringify(fullUser))
+        navigate({ to: '/faqs' })
+      })
+      .catch(() => {
+        localStorage.removeItem('token')
+        setUser(null)
+        setToken(null)
+      })
   }, [navigate])
 
   const logout = useCallback(() => {
@@ -78,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user')
     setUser(null)
     setToken(null)
-    navigate('/login')
+    navigate({ to: '/login' })
   }, [navigate])
 
   return (

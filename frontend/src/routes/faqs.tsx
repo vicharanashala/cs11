@@ -1,15 +1,10 @@
-import { useSearch } from '@tanstack/react-router'
 import { useFaqs } from '@/hooks/useFaqs'
 import { FaqCard } from '@/components/FaqCard'
 import { SearchBar } from '@/components/SearchBar'
 import { CategoryFilter } from '@/components/CategoryFilter'
 
 export function FaqsPage() {
-  const searchParams = useSearch<{ search?: string; category?: string }>({ from: '/faqs' })
-  const search = searchParams.search ?? ''
-  const category = searchParams.category ?? ''
-
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useFaqs(search, category)
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useFaqs('', '')
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -65,7 +60,7 @@ export function FaqsPage() {
             <div className="text-center py-16">
               <p className="text-gray-400 text-lg mb-1">No FAQs found</p>
               <p className="text-sm text-gray-400">
-                {search ? `No results for "${search}"` : 'Check back later for answers'}
+                Check back later for answers
               </p>
             </div>
           )}
