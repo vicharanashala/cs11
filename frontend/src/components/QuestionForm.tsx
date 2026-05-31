@@ -74,6 +74,7 @@ export function QuestionForm({ mutation: injectedMutation, onAiMatch, onSuccess 
       }
     },
     onError: (err: unknown) => {
+      // Surface the actual API error message; don't swallow it silently
       const e = err as { response?: { data?: { message?: string } } }
       setApiError(e.response?.data?.message ?? 'Failed to submit question.')
     },
@@ -141,7 +142,7 @@ export function QuestionForm({ mutation: injectedMutation, onAiMatch, onSuccess 
           rows={5}
           value={form.body}
           onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
-          placeholder="Provide more context about your question…"
+          placeholder="Provide more context about your question..."
           className={`w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors resize-y ${
             errors.body ? 'border-red-400 focus:border-red-500' : 'border-gray-300 focus:border-indigo-500'
           }`}
@@ -161,7 +162,7 @@ export function QuestionForm({ mutation: injectedMutation, onAiMatch, onSuccess 
             errors.category ? 'border-red-400 focus:border-red-500' : 'border-gray-300 focus:border-indigo-500'
           }`}
         >
-          <option value="">Select a category…</option>
+          <option value="">Select a category...</option>
           {categories.map(cat => (
             <option key={cat._id} value={cat._id}>{cat.name}</option>
           ))}
@@ -190,7 +191,7 @@ export function QuestionForm({ mutation: injectedMutation, onAiMatch, onSuccess 
         disabled={mutation.isPending}
         className="w-full py-2.5 px-4 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {mutation.isPending ? 'Submitting…' : 'Submit Question'}
+        {mutation.isPending ? 'Submitting...' : 'Submit Question'}
       </button>
     </form>
   )

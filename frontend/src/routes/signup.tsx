@@ -1,11 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 
 export function SignupPage() {
-  const navigate = useNavigate()
   const { login } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -17,7 +16,7 @@ export function SignupPage() {
     mutationFn: () => api.post('/auth/register', { name, email, password }),
     onSuccess: ({ data }) => {
       login(data.token)
-      navigate({ to: '/faqs' })
+      // login() already navigates to /faqs in its finally block — no duplicate navigate needed
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } }

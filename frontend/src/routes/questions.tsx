@@ -122,7 +122,7 @@ export function QuestionsPage() {
                       params={{ id: q._id }}
                       className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
                     >
-                      View →
+                      View ›
                     </Link>
                   </div>
                 </div>

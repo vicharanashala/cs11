@@ -120,7 +120,7 @@ export function QuestionDetailPage() {
             {typeof question.aiMatchFaqId === 'object' && (
               <Link
                 to="/faqs/$id"
-                params={{ id: question.aiMatchFaqId._id }}
+                params={{ id: (question.aiMatchFaqId as { _id: string })._id }}
                 className="mt-1 inline-block text-xs text-indigo-600 hover:underline"
               >
                 View matched FAQ →

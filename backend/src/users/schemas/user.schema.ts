@@ -19,6 +19,9 @@ export class User {
 
   @Prop({ default: 0 })
   reputation: number
+
+  @Prop({ default: true })
+  isFirstTimeIntern: boolean
 }
 
 export const UserSchema = SchemaFactory.createForClass(User)

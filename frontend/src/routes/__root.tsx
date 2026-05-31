@@ -12,7 +12,7 @@ import { AdminFaqsPage } from './admin.faqs'
 import { AdminAnalyticsPage } from './admin.analytics'
 import { Navbar } from '@/components/Navbar'
 
-// ─── Guard helpers ────────────────────────────────────────────────────────────
+// ---- Guard helpers ----
 
 function requireAuth() {
   if (!localStorage.getItem('token')) {
@@ -30,7 +30,7 @@ function requireAdmin() {
   }
 }
 
-// ─── Root route ───────────────────────────────────────────────────────────────
+// ---- Root route ----
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -43,7 +43,7 @@ const rootRoute = createRootRoute({
   ),
 })
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
+// ---- Routes ----
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -105,7 +105,7 @@ const questionDetailRoute = createRoute({
   component: () => <QuestionDetailPage />,
 })
 
-// ─── Admin section (has its own sidebar layout) ───────────────────────────────
+// ---- Admin section (has its own sidebar layout) ----
 
 const adminLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -135,7 +135,7 @@ const adminAnalyticsRoute = createRoute({
   component: () => <AdminAnalyticsPage />,
 })
 
-// ─── Route tree ───────────────────────────────────────────────────────────────
+// ---- Route tree ----
 
 const routeTree = rootRoute.addChildren([
   indexRoute,

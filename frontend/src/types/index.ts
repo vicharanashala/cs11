@@ -101,6 +101,24 @@ export interface Flag {
   updatedAt: string
 }
 
+// Document Status (internship pipeline)
+export type DocumentType = 'noc' | 'offer_letter_download' | 'offer_letter_acceptance' | 'internship_beginning'
+export type DocumentStatusValue = 'pending' | 'completed' | 'under_review' | 'rejected' | 'requires_resubmission'
+
+export interface StatusRecord {
+  documentType: DocumentType
+  status: DocumentStatusValue
+  statusMessage: string
+  completedAt?: string
+}
+
+export interface StatusResponse {
+  type: 'document_status'
+  records: StatusRecord[]
+  overallMessage: string
+  completionPercentage: number
+}
+
 // Category
 export interface Category {
   _id: string
@@ -131,4 +149,23 @@ export interface PaginatedResponse<T> {
   total: number
   page: number
   limit: number
+}
+
+// Admin query-insights (Chunk 13)
+export interface CategoryCoverageItem {
+  categoryId: string
+  categoryName: string
+  categorySlug: string
+  totalQuestions: number
+  resolvedCount: number
+  unresolvedCount: number
+  resolutionRate: number
+  faqCount: number
+  coverageGap: number
+  representativeQuery: string
+}
+
+export interface CategoryCoverageResponse {
+  generatedAt: string
+  categories: CategoryCoverageItem[]
 }

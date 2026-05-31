@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import type { FAQ } from '@/types'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ---- Types ----
 
-// ─── Create / Edit FAQ form ────────────────────────────────────────────────────
+// ---- Create / Edit FAQ form ----
 
 interface FaqFormData {
   title: string
@@ -131,14 +131,14 @@ function FaqForm({ initial, faqId, onClose, onSuccess }: FaqFormProps) {
           disabled={mutation.isPending}
           className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
         >
-          {mutation.isPending ? 'Saving…' : isEdit ? 'Update FAQ' : 'Create FAQ'}
+          {mutation.isPending ? 'Saving...' : isEdit ? 'Update FAQ' : 'Create FAQ'}
         </button>
       </div>
     </form>
   )
 }
 
-// ─── Inline edit row ──────────────────────────────────────────────────────────
+// ---- Inline edit row ----
 
 interface FaqRowProps {
   faq: FAQ
@@ -193,15 +193,29 @@ function FaqRow({ faq, onEdit, onArchive }: FaqRowProps) {
   )
 }
 
-// ─── Main panel ───────────────────────────────────────────────────────────────
+// ---- Main panel ----
 
-export function FaqManagerPanel() {
+interface FaqManagerPanelProps {
+  prefill?: { category?: string; title?: string }
+  autoOpenCreate?: boolean
+  onAutoOpenHandled?: () => void
+}
+
+export function FaqManagerPanel({ prefill, autoOpenCreate, onAutoOpenHandled }: FaqManagerPanelProps) {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editFaq, setEditFaq] = useState<FAQ | null>(null)
   const limit = 10
+
+  // Auto-open create form when navigated from CategoryCoverageCard
+  useEffect(() => {
+    if (autoOpenCreate) {
+      setShowCreateForm(true)
+      onAutoOpenHandled?.()
+    }
+  }, [autoOpenCreate, onAutoOpenHandled])
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-faqs', page, search],
@@ -232,6 +246,20 @@ export function FaqManagerPanel() {
 
   const totalPages = data ? Math.ceil(data.totalCount / limit) : 0
 
+  // Build a sliding window of page buttons centered around current page
+  function getPageButtons(current: number, total: number): number[] {
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1)
+    const half = 2
+    let start = Math.max(1, current - half)
+    let end = Math.min(total, start + 4)
+    if (end - start < 4) start = Math.max(1, end - 4)
+    const pages: number[] = []
+    for (let p = start; p <= end; p++) pages.push(p)
+    return pages
+  }
+
+  const pageButtons = getPageButtons(page, totalPages)
+
   return (
     <div>
       {/* Toolbar */}
@@ -241,7 +269,7 @@ export function FaqManagerPanel() {
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            placeholder="Search FAQs by title…"
+            placeholder="Search FAQs by title..."
             className="w-full sm:w-64 px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
           />
         </div>
@@ -258,6 +286,10 @@ export function FaqManagerPanel() {
         <div className="mb-6 bg-indigo-50 border border-indigo-100 rounded-xl p-5">
           <h3 className="font-semibold text-gray-900 mb-4">New FAQ</h3>
           <FaqForm
+            initial={{
+              title: prefill?.title ?? '',
+              category: prefill?.category ?? '',
+            }}
             onClose={() => setShowCreateForm(false)}
             onSuccess={handleFormSuccess}
           />
@@ -326,7 +358,7 @@ export function FaqManagerPanel() {
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between">
           <p className="text-xs text-gray-500">
-            Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, data?.totalCount ?? 0)} of {data?.totalCount}
+            Showing {(page - 1) * limit + 1}–{Math.min(page * limit, data?.totalCount ?? 0)} of {data?.totalCount}
           </p>
           <div className="flex gap-1">
             <button
@@ -336,20 +368,17 @@ export function FaqManagerPanel() {
             >
               Prev
             </button>
-            {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-              const p = i + 1
-              return (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`px-3 py-1 text-xs border rounded transition-colors ${
-                    p === page ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {p}
-                </button>
-              )
-            })}
+            {pageButtons.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`px-3 py-1 text-xs border rounded transition-colors ${
+                  p === page ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}

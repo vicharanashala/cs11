@@ -57,7 +57,10 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
       showToast('Question promoted to FAQ.')
       setShowPromoteModal(false)
     },
-    onError: () => showToast('Promote failed — endpoint may not exist yet.'),
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message ?? err?.message ?? 'Promote failed.'
+      showToast(msg)
+    },
   })
 
   function handleResolve() {
@@ -89,21 +92,31 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-gray-900 truncate">{item.title}</h3>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-              <span>Asked by <span className="font-medium">{item.askedBy?.name ?? 'Unknown'}</span></span>
-              <span>•</span>
+              <span>
+                Asked by <span className="font-medium">{item.askedBy?.name ?? 'Unknown'}</span>
+              </span>
+              <span>·</span>
               <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-              <span>•</span>
+              <span>·</span>
               <span className="flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
                 </svg>
                 {item.answerCount} answer{item.answerCount !== 1 ? 's' : ''}
               </span>
               <span
                 className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                  item.status === 'open'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-yellow-100 text-yellow-700'
+                  item.status === 'open' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
                 }`}
               >
                 {item.status.replace('_', ' ')}
@@ -140,7 +153,7 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
             <textarea
               value={responseBody}
               onChange={(e) => setResponseBody(e.target.value)}
-              placeholder="Write the official answer to this question…"
+              placeholder="Write the official answer to this question..."
               rows={4}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-indigo-500 resize-none mb-3"
             />
@@ -150,7 +163,7 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
                 disabled={!responseBody.trim() || resolveMutation.isPending}
                 className="px-4 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {resolveMutation.isPending ? 'Submitting…' : 'Submit Resolution'}
+                {resolveMutation.isPending ? 'Submitting...' : 'Submit Resolution'}
               </button>
             </div>
           </div>
@@ -209,7 +222,7 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
                 disabled={!promoteTitle.trim() || !promoteCategory.trim() || promoteMutation.isPending}
                 className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {promoteMutation.isPending ? 'Promoting…' : 'Promote'}
+                {promoteMutation.isPending ? 'Promoting...' : 'Promote'}
               </button>
             </div>
           </div>

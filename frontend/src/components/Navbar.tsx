@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate, useMatchRoute } from '@tanstack/react-router'
+import { Link, useMatchRoute } from '@tanstack/react-router'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface NavLinkProps {
@@ -9,8 +9,7 @@ interface NavLinkProps {
 
 function NavLink({ to, children }: NavLinkProps) {
   const matchRoute = useMatchRoute()
-  const isActive = matchRoute({ to } as any) ||
-    (to !== '/' && window.location.pathname.startsWith(to))
+  const isActive = Boolean(matchRoute({ to: to as any }))
 
   return (
     <Link
@@ -28,7 +27,6 @@ function NavLink({ to, children }: NavLinkProps) {
 
 export function Navbar() {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -42,23 +40,18 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleLogout = () => {
-    logout()
-    navigate({ to: '/login' } as any)
-  }
-
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
-          {/* Left — Logo */}
+          {/* Left - Logo */}
           <div className="flex-shrink-0">
             <Link to="/faqs" className="text-xl font-bold text-indigo-600">
               CrowdFAQ
             </Link>
           </div>
 
-          {/* Center — Nav links */}
+          {/* Center - Nav links */}
           <div className="hidden md:flex items-center space-x-1">
             <NavLink to="/faqs">Browse FAQs</NavLink>
             <NavLink to="/ask">Ask a Question</NavLink>
@@ -76,8 +69,18 @@ export function Navbar() {
                   <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">
                     {user.name.charAt(0).toUpperCase()}
                   </span>
-                  <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg
+                    className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </button>
 
@@ -91,7 +94,7 @@ export function Navbar() {
                       My Questions
                     </Link>
                     <button
-                      onClick={handleLogout}
+                      onClick={() => logout()}
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
                     >
                       Logout

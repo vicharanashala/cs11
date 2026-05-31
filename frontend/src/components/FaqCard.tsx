@@ -1,12 +1,30 @@
 import { Link } from '@tanstack/react-router'
 import type { FAQ } from '@/types'
 
+/** Strips common Markdown syntax for plain-text preview. */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')   // fenced code blocks
+    .replace(/`[^`]*`/g, ' ')           // inline code
+    .replace(/!\[.*?\]\(.*?\)/g, ' ') // images
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links → text only
+    .replace(/#{1,6}\s+/g, ' ')        // headings
+    .replace(/[*_~]{1,3}([^*_~]+)[*_~]{1,3}/g, '$1') // bold/italic/strikethrough
+    .replace(/^\s*[-*+>]\s+/gm, ' ')  // lists / blockquotes
+    .replace(/\[\]/g, ' ')            // leftover brackets
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 interface FaqCardProps {
   faq: FAQ
 }
 
 export function FaqCard({ faq }: FaqCardProps) {
-  const categoryName = faq.category
+  const categoryName =
+    typeof (faq.category as unknown) === 'string'
+      ? (faq.category as string)
+      : ((faq.category as unknown) as { name?: string })?.name ?? 'Unknown'
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
@@ -30,7 +48,7 @@ export function FaqCard({ faq }: FaqCardProps) {
 
       {/* Body preview — strip markdown, truncate */}
       <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-        {faq.body.replace(/[#*`_~\[\]]/g, '').slice(0, 120)}
+        {stripMarkdown(faq.body).slice(0, 120)}
         {faq.body.length > 120 ? '…' : ''}
       </p>
 

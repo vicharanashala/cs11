@@ -34,4 +34,10 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found')
     return user
   }
+
+  async updateField(userId: string, field: string, value: any): Promise<UserDocument> {
+    const user = await this.userModel.findByIdAndUpdate(userId, { [field]: value }, { new: true }).exec()
+    if (!user) throw new NotFoundException('User not found')
+    return user
+  }
 }

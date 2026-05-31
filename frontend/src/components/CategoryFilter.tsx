@@ -20,27 +20,41 @@ interface CategoryFilterProps {
 
 export function CategoryFilter({ baseRoute = '/faqs' }: CategoryFilterProps) {
   const navigate = useNavigate()
-  const search = useSearch({ from: baseRoute }) as SearchState
+  const search = useSearch({ from: baseRoute as any }) as SearchState
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
   })
 
-  function select(slug: string) {
+  const activeCategory = search.category
+
+  function select(slug: string | undefined) {
     navigate({
-      routeMask: baseRoute,
+      routeMask: baseRoute as any,
       search: (prev: SearchState) => ({
         ...prev,
-        category: slug === search.category ? undefined : slug,
+        category: slug,
       }),
     } as any)
   }
 
   return (
     <div className="flex flex-wrap gap-2">
+      {/* "All" pill */}
+      <button
+        onClick={() => select(undefined)}
+        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+          !activeCategory
+            ? 'bg-indigo-600 text-white border-indigo-600'
+            : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
+        }`}
+      >
+        All
+      </button>
+
       {categories.map((cat) => {
-        const isActive = search.category === cat.slug
+        const isActive = activeCategory === cat.slug
         return (
           <button
             key={cat._id}

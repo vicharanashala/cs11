@@ -48,11 +48,13 @@ export function AdminQueriesPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Resolution Queue</h1>
           <p className="mt-0.5 text-sm text-gray-500">
-            {data ? `${data.totalCount} unresolved question${data.totalCount !== 1 ? 's' : ''} waiting` : 'Loading…'}
+            {data
+              ? `${data.totalCount} unresolved question${data.totalCount !== 1 ? 's' : ''} waiting`
+              : 'Loading...'}
           </p>
         </div>
         {isFetching && !isLoading && (
-          <span className="text-xs text-indigo-600 animate-pulse">Refreshing…</span>
+          <span className="text-xs text-indigo-600 animate-pulse">Refreshing...</span>
         )}
       </div>
 
@@ -69,7 +71,7 @@ export function AdminQueriesPage() {
 
       {!isLoading && data && data.data.length === 0 && (
         <div className="text-center py-16">
-          <div className="text-4xl mb-3">🎉</div>
+          <div className="text-4xl mb-3">✅</div>
           <p className="text-gray-500 font-medium">Queue is clear!</p>
           <p className="text-sm text-gray-400 mt-1">All open questions have been resolved.</p>
         </div>

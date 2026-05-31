@@ -1,24 +1,6 @@
-// ---------------------------------------------------------------------------
-// Types — must mirror the GetStatusResponse / StatusRecord shape from
-// backend/src/questions/document-status.service.ts
-// ---------------------------------------------------------------------------
+import type { DocumentType, DocumentStatusValue, StatusRecord, StatusResponse } from '@/types'
 
-export type DocumentType = 'noc' | 'offer_letter_download' | 'offer_letter_acceptance' | 'internship_beginning'
-export type DocumentStatusValue = 'pending' | 'completed' | 'under_review' | 'rejected' | 'requires_resubmission'
-
-export interface StatusRecord {
-  documentType: DocumentType
-  status: DocumentStatusValue
-  statusMessage: string
-  completedAt?: string
-}
-
-export interface StatusResponse {
-  type: 'document_status'
-  records: StatusRecord[]
-  overallMessage: string
-  completionPercentage: number
-}
+export type { DocumentType, DocumentStatusValue } from '@/types'
 
 // ---------------------------------------------------------------------------
 // Constants

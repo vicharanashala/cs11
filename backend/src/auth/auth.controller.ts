@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common'
+import { Controller, Post, Get, Patch, Body, UseGuards, Request } from '@nestjs/common'
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
 import { AuthService } from './auth.service'
 import { RegisterDto, LoginDto } from './dto'
@@ -26,6 +26,14 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current authenticated user' })
   me(@Request() req: any) {
-  return req.user
-}
+    return req.user
+  }
+
+  @Patch('me/first-time')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mark first-time intern as no longer first-time' })
+  clearFirstTimeFlag(@Request() req: any) {
+    return this.authService.clearFirstTimeFlag(req.user.userId)
+  }
 }

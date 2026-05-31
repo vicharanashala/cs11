@@ -3,17 +3,19 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 
 interface SearchState {
   search?: string
+  category?: string
 }
 
 interface SearchBarProps {
   /** Route whose search params to update. Defaults to '/faqs'. */
   baseRoute?: string
+  placeholder?: string
 }
 
-export function SearchBar({ baseRoute = '/faqs' }: SearchBarProps) {
+export function SearchBar({ baseRoute = '/faqs', placeholder }: SearchBarProps) {
   const navigate = useNavigate()
-  const search = useSearch({ from: baseRoute }) as SearchState
-  const [value, setValue] = useState('')
+  const search = useSearch({ from: baseRoute as any }) as SearchState
+  const [value, setValue] = useState(() => search.search ?? '')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -22,18 +24,18 @@ export function SearchBar({ baseRoute = '/faqs' }: SearchBarProps) {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       navigate({
-        from: baseRoute as '/faqs',
-        search: { ...search, search: val || undefined },
-      })
+        routeMask: baseRoute,
+        search: (prev: SearchState) => ({ ...prev, search: val || undefined }),
+      } as any)
     }, 300)
   }
 
   function handleClear() {
     setValue('')
     navigate({
-      from: baseRoute as '/faqs',
-      search: { ...search, search: undefined },
-    })
+      routeMask: baseRoute,
+      search: (prev: SearchState) => ({ ...prev, search: undefined }),
+    } as any)
   }
 
   return (
@@ -47,7 +49,7 @@ export function SearchBar({ baseRoute = '/faqs' }: SearchBarProps) {
         type="text"
         value={value}
         onChange={handleChange}
-        placeholder="Search FAQs…"
+        placeholder={placeholder ?? 'Search FAQs…'}
         className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-indigo-500"
       />
       {value && (

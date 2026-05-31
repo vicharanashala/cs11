@@ -114,6 +114,11 @@ export function FaqDetailPage() {
 
   const { data: faq, isLoading } = useFaq(id!)
 
+  const categoryName =
+    typeof faq?.category === 'string'
+      ? faq.category
+      : (faq?.category as { name?: string } | undefined)?.name ?? 'Unknown'
+
   const voteMutation = useMutation({
     mutationFn: () => {
       const token = localStorage.getItem('token')
@@ -180,13 +185,13 @@ export function FaqDetailPage() {
       <nav className="mb-4 text-sm text-gray-500">
         <Link to="/faqs" className="hover:text-indigo-600">FAQs</Link>
         <span className="mx-2">›</span>
-        <span className="text-gray-700">{faq.category}</span>
+        <span className="text-gray-700">{categoryName}</span>
       </nav>
 
       {/* Category badge */}
       <div className="mb-3">
         <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600">
-          {faq.category}
+          {categoryName}
         </span>
       </div>
 

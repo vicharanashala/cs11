@@ -1,10 +1,20 @@
+import { useSearch } from '@tanstack/react-router'
 import { useFaqs } from '@/hooks/useFaqs'
 import { FaqCard } from '@/components/FaqCard'
 import { SearchBar } from '@/components/SearchBar'
 import { CategoryFilter } from '@/components/CategoryFilter'
 
+interface FaqsSearch {
+  search?: string
+  category?: string
+}
+
 export function FaqsPage() {
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useFaqs('', '')
+  const search = useSearch({ from: '/faqs' } as any) as FaqsSearch
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useFaqs(
+    search.search ?? '',
+    search.category ?? '',
+  )
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">

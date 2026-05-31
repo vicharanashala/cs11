@@ -47,7 +47,7 @@ export function AiSuggestionBanner({ matchedFaq, onAccept, onReject }: AiSuggest
             onClick={onAccept}
             className="flex-1 py-2.5 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
           >
-            ✓ Yes, this answered it
+            ✕ Yes, this answered it
           </button>
           <button
             onClick={onReject}

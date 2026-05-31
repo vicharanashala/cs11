@@ -7,6 +7,7 @@ interface AuthUser {
   _id: string
   name: string
   role: 'intern' | 'admin' | 'superadmin'
+  isFirstTimeIntern: boolean
 }
 
 interface AuthContextValue {
@@ -24,7 +25,12 @@ function decodeJwt(token: string): AuthUser | null {
     const payload = token.split('.')[1]
     const decoded = JSON.parse(atob(payload))
     // JWT claim "userId" holds the MongoDB ObjectId string
-    return { _id: decoded.userId, name: decoded.name ?? '', role: decoded.role }
+    return {
+      _id: decoded.userId,
+      name: decoded.name ?? '',
+      role: decoded.role,
+      isFirstTimeIntern: decoded.isFirstTimeIntern ?? true,
+    }
   } catch {
     return null
   }
@@ -44,7 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (decoded) {
         setUser(decoded)
         api.get('/auth/me')
-          .then(({ data }) => setUser({ _id: data._id, name: data.name, role: data.role }))
+          .then(({ data }) =>
+            setUser({ _id: data._id, name: data.name, role: data.role, isFirstTimeIntern: data.isFirstTimeIntern ?? true }),
+          )
           .catch(() => {
             localStorage.removeItem('token')
             setUser(null)
@@ -65,18 +73,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(newToken)
     const decoded = decodeJwt(newToken)
     if (decoded) setUser(decoded)
-    api.get('/auth/me')
-      .then(({ data }) => {
-        const fullUser = { _id: data._id, name: data.name, role: data.role }
-        setUser(fullUser)
-        localStorage.setItem('user', JSON.stringify(fullUser))
-        navigate({ to: '/faqs' })
-      })
-      .catch(() => {
-        localStorage.removeItem('token')
-        setUser(null)
-        setToken(null)
-      })
+    // Try/finally ensures navigate is always called even if /auth/me fails
+    try {
+      api.get('/auth/me')
+        .then(({ data }) => {
+          const fullUser = { _id: data._id, name: data.name, role: data.role, isFirstTimeIntern: data.isFirstTimeIntern ?? true }
+          setUser(fullUser)
+          localStorage.setItem('user', JSON.stringify(fullUser))
+        })
+        .catch(() => {
+          // Network/server error: token may be invalid - clear it
+          localStorage.removeItem('token')
+          setUser(null)
+          setToken(null)
+        })
+    } finally {
+      navigate({ to: '/faqs' })
+    }
   }, [navigate])
 
   const logout = useCallback(() => {

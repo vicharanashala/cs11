@@ -14,7 +14,7 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 — clear session and redirect
+// Handle 401 - clear session and redirect to login
 api.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -18,9 +18,11 @@ export function AnswerCard({ answer, questionId, questionAuthorId, hasAcceptedAn
     ? answer.contributedBy.name
     : 'Community Member'
 
-  const isOwnAnswer = user?._id === (
-    typeof answer.contributedBy === 'object' ? answer.contributedBy._id : answer.contributedBy
-  )
+  const contributorId = typeof answer.contributedBy === 'object'
+    ? answer.contributedBy._id
+    : answer.contributedBy
+
+  const isOwnAnswer = user?._id === contributorId
   const isQuestionAuthor = user?._id === questionAuthorId
   const canAccept = isQuestionAuthor && !hasAcceptedAnswer && !answer.isAccepted
 
@@ -71,7 +73,13 @@ export function AnswerCard({ answer, questionId, questionAuthorId, hasAcceptedAn
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
               </svg>
             </button>
-            <span className="text-xs font-medium text-gray-600 min-w-[1rem] text-center">
+            <span className={`text-xs font-medium min-w-[1rem] text-center ${
+              answer.upvotes - answer.downvotes > 0
+                ? 'text-green-600'
+                : answer.upvotes - answer.downvotes < 0
+                ? 'text-red-500'
+                : 'text-gray-500'
+            }`}>
               {answer.upvotes - answer.downvotes}
             </span>
             <button

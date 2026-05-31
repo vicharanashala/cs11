@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, Param, UseGuards } from '@nestjs/common'
+import { Controller, Get, Patch, Body, Param, UseGuards, NotFoundException, BadRequestException } from '@nestjs/common'
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
 import { UsersService } from './users.service'
 import { JwtGuard, AdminGuard } from '../auth/guards'
@@ -15,7 +15,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get user by ID' })
   async getUser(@Param('id') id: string) {
     const user = await this.usersService.findById(id)
-    if (!user) return { error: 'User not found' }
+    if (!user) throw new NotFoundException('User not found')
     const { passwordHash, ...result } = user.toObject()
     return result
   }
@@ -26,8 +26,8 @@ export class UsersController {
   @ApiOperation({ summary: 'Update user role (admin/superadmin only)' })
   async updateRole(@Param('id') id: string, @Body('role') role: string) {
     const validRoles = [ROLES.INTERN, ROLES.ADMIN, ROLES.SUPERADMIN]
-    if (!validRoles.includes(role as 'intern' | 'admin' | 'superadmin')) {
-      return { error: 'Invalid role' }
+    if (!role || !validRoles.includes(role as 'intern' | 'admin' | 'superadmin')) {
+      throw new BadRequestException('Invalid role')
     }
     const user = await this.usersService.updateRole(id, role)
     const { passwordHash, ...result } = user.toObject()

@@ -4,7 +4,12 @@ import { useMutation } from '@tanstack/react-query'
 import { QuestionForm } from '@/components/QuestionForm'
 import { AiSuggestionBanner } from '@/components/AiSuggestionBanner'
 import { DocumentStatusCard } from '@/components/DocumentStatusCard'
+import { WelcomeBanner } from '@/components/WelcomeBanner'
 import api from '@/lib/api'
+import type { StatusResponse } from '@/types'
+
+// Re-export so existing consumers (if any) keep working
+export type { StatusRecord, StatusResponse } from '@/types'
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -21,20 +26,6 @@ interface AiMatchResult {
   id: string
   title: string
   confidence?: number
-}
-
-export interface StatusRecord {
-  documentType: 'noc' | 'offer_letter_download' | 'offer_letter_acceptance' | 'internship_beginning'
-  status: 'pending' | 'completed' | 'under_review' | 'rejected' | 'requires_resubmission'
-  statusMessage: string
-  completedAt?: string
-}
-
-export interface StatusResponse {
-  type: 'document_status'
-  records: StatusRecord[]
-  overallMessage: string
-  completionPercentage: number
 }
 
 interface AskApiResponse {
@@ -88,8 +79,13 @@ export function AskPage() {
 
   function handleAiReject() {
     if (!pendingPayload) return
-    api.post('/questions?forceSubmit=true', pendingPayload)
-      .then(() => navigate({ to: '/questions' }))
+    api.post('/questions?forceSubmit=true', pendingPayload).then(
+      () => navigate({ to: '/questions' }),
+      () => {
+        // Let the error surface naturally — don't swallow it silently
+        alert('Failed to submit your question. Please try again.')
+      },
+    )
   }
 
   function handleStatusBack() {
@@ -133,6 +129,7 @@ export function AskPage() {
           The community or AI may already have an answer for you.
         </p>
       </div>
+      <WelcomeBanner />
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <QuestionForm
           mutation={submissionMutation}

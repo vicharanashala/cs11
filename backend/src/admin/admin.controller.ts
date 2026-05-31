@@ -2,6 +2,7 @@ import { Controller, Get, Patch, Post, Body, Param, Query, UseGuards, Request } 
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
 import { AdminService } from './admin.service'
 import { AnalyticsService } from './analytics.service'
+import { QueryAnalyticsService } from './query-analytics.service'
 import { JwtGuard, AdminGuard } from '../auth/guards'
 import { QuestionStatusCounts, CategoryBreakdownItem, TopContributor } from './analytics.service'
 
@@ -13,6 +14,7 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly analyticsService: AnalyticsService,
+    private readonly queryAnalyticsService: QueryAnalyticsService,
   ) {}
 
   @Get('queries')
@@ -44,5 +46,11 @@ export class AdminController {
   @ApiOperation({ summary: 'Platform analytics dashboard — FAQ counts, question statuses, top contributors, resolution metrics' })
   getAnalytics() {
     return this.analyticsService.getAnalytics()
+  }
+
+  @Get('query-insights')
+  @ApiOperation({ summary: 'Query analytics: category coverage gaps, resolution rates, and representative questions ranked by coverage need' })
+  getQueryInsights() {
+    return this.queryAnalyticsService.getCategoryCoverage()
   }
 }
