@@ -9,9 +9,7 @@ import { Category, CategorySchema } from '../categories/category.schema'
 import { AdminService } from './admin.service'
 import { AdminController } from './admin.controller'
 import { AnalyticsService } from './analytics.service'
-import { QueryAnalyticsService } from './query-analytics.service'
 import { MetaModule } from './meta.module'
-import { MetaService } from './meta.service'
 
 @Module({
   imports: [
@@ -25,8 +23,8 @@ import { MetaService } from './meta.service'
     HttpModule,
     MetaModule,
   ],
-  providers: [AdminService, AnalyticsService, QueryAnalyticsService],
+  providers: [AdminService, AnalyticsService],
   controllers: [AdminController],
-  exports: [AdminService, AnalyticsService, QueryAnalyticsService],
+  exports: [AdminService, AnalyticsService],
 })
 export class AdminModule {}
