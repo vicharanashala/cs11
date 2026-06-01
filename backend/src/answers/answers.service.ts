@@ -63,68 +63,69 @@ export class AnswersService {
 
   async vote(answerId: string, voterId: string, dto: VoteDto): Promise<{ action: string; upvotes: number; downvotes: number }> {
     const voterOid = new Types.ObjectId(voterId)
+    const newValue: 1 | -1 = dto.value
+
+    // Check answer exists and voter isn't self-voting
     const answer = await this.answerModel.findById(answerId).exec()
     if (!answer) throw new NotFoundException('Answer not found')
-
-    // Cannot vote on own answer
     if (answer.contributedBy.toString() === voterId) {
       throw new BadRequestException('Cannot vote on your own answer.')
     }
 
     const existingVote = answer.votes.find((v) => v.userId.toString() === voterId)
-    const newValue: 1 | -1 = dto.value
 
-    let incUpvotes = 0
-    let incDownvotes = 0
-    let newVoteEntry: { userId: Types.ObjectId; value: number } | null = null
+    let action: string
 
     if (existingVote) {
       if (existingVote.value === newValue) {
-        // Same direction → toggle off (remove vote)
-        const pullIdx = answer.votes.findIndex((v) => v.userId.toString() === voterId)
-        answer.votes.splice(pullIdx, 1)
-        if (newValue === 1) incUpvotes = -1
-        else incDownvotes = -1
+        // Same direction → remove vote (toggle off)
+        await this.answerModel.updateOne(
+          { _id: new Types.ObjectId(answerId) },
+          {
+            $pull: { votes: { userId: voterOid } },
+            $inc: { upvotes: newValue === 1 ? -1 : 0, downvotes: newValue === -1 ? -1 : 0 },
+          },
+        )
+        action = 'removed'
       } else {
-        // Opposite direction → flip vote
-        existingVote.value = newValue
-        if (newValue === 1) { incUpvotes = 1; incDownvotes = -1 }
-        else { incUpvotes = -1; incDownvotes = 1 }
+        // Opposite direction → flip vote atomically using arrayFilters
+        await this.answerModel.updateOne(
+          { _id: new Types.ObjectId(answerId) },
+          {
+            $set: { 'votes.$[elem].value': newValue },
+            $inc: { upvotes: newValue === 1 ? 1 : -1, downvotes: newValue === -1 ? 1 : -1 },
+          },
+          { arrayFilters: [{ 'elem.userId': voterOid }] },
+        )
+        action = 'changed'
       }
     } else {
-      // New vote
-      answer.votes.push({ userId: voterOid, value: newValue })
-      if (newValue === 1) incUpvotes = 1
-      else incDownvotes = 1
-    }
-
-    // Use findOneAndUpdate for atomic vote + count update
-    const updated = await this.answerModel
-      .findOneAndUpdate(
+      // New vote — push to array and increment counter
+      await this.answerModel.updateOne(
         { _id: new Types.ObjectId(answerId) },
         {
-          $set: { votes: answer.votes },
-          $inc: { upvotes: incUpvotes, downvotes: incDownvotes },
+          $push: { votes: { userId: voterOid, value: newValue } },
+          $inc: { upvotes: newValue === 1 ? 1 : 0, downvotes: newValue === -1 ? 1 : 0 },
         },
-        { new: true },
       )
-      .exec()
+      action = 'added'
+    }
 
     // Update contributor reputation: +2 per net upvote, -1 per net downvote
-    if (answer.contributedBy) {
-      const repDelta = incUpvotes * 2 + incDownvotes * -1
-      if (repDelta !== 0) {
-        await this.connection
-          .collection('users')
-          .updateOne({ _id: answer.contributedBy }, { $inc: { reputation: repDelta } })
-      }
+    const repDelta: number = action === 'removed'
+      ? (newValue === 1 ? -2 : 1)
+      : action === 'changed'
+      ? (newValue === 1 ? 3 : -3)   // flip: undo old + apply new = +/-3 net
+      : (newValue === 1 ? 2 : -1)   // new vote
+
+    if (answer.contributedBy && repDelta !== 0) {
+      await this.connection
+        .collection('users')
+        .updateOne({ _id: answer.contributedBy }, { $inc: { reputation: repDelta } })
     }
 
-    return {
-      action: existingVote ? (existingVote.value === newValue ? 'removed' : 'changed') : 'added',
-      upvotes: updated!.upvotes,
-      downvotes: updated!.downvotes,
-    }
+    const updated = await this.answerModel.findById(answerId).lean().exec()
+    return { action, upvotes: updated!.upvotes, downvotes: updated!.downvotes }
   }
 
   async acceptAnswer(questionId: string, answerId: string, askedByUserId: string): Promise<void> {
@@ -147,10 +148,18 @@ export class AnswersService {
         .collection('answers')
         .updateMany({ questionId: new Types.ObjectId(questionId) }, { $set: { isAccepted: false } }, { session })
 
-      // Accept the target answer
-      await this.connection
+      // Accept the target answer — must belong to this question
+      const acceptedResult = await this.connection
         .collection('answers')
-        .updateOne({ _id: new Types.ObjectId(answerId) }, { $set: { isAccepted: true } }, { session })
+        .updateOne(
+          { _id: new Types.ObjectId(answerId), questionId: new Types.ObjectId(questionId) },
+          { $set: { isAccepted: true } },
+          { session },
+        )
+
+      if (acceptedResult.modifiedCount === 0) {
+        throw new NotFoundException('Answer not found for this question.')
+      }
 
       // Close the question
       await this.connection

@@ -12,13 +12,14 @@ interface AiMatchResult {
 export class AiMatcherService {
   private readonly logger = new Logger(AiMatcherService.name)
   private readonly serviceUrl: string
-  private readonly confidenceThreshold = 0.7
+  private readonly confidenceThreshold: number
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
     this.serviceUrl = this.configService.get<string>('AI_SERVICE_URL', 'http://localhost:8000')
+    this.confidenceThreshold = this.configService.get<number>('AI_CONFIDENCE_THRESHOLD', 0.75)
   }
 
   async match(query: string): Promise<AiMatchResult> {

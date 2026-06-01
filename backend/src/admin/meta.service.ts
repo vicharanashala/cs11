@@ -10,14 +10,14 @@ export class MetaService {
   constructor(@InjectModel(Meta.name) private metaModel: Model<MetaDocument>) {}
 
   async getLastRebuild(): Promise<Date | null> {
-    const meta = await this.metaModel.findById(this.META_ID).lean().exec()
+    const meta = await this.metaModel.findOne({ key: this.META_ID }).lean().exec()
     return meta?.lastIndexRebuild ?? null
   }
 
   async setLastRebuild(date: Date = new Date()): Promise<void> {
-    await this.metaModel.findByIdAndUpdate(
-      this.META_ID,
-      { _id: this.META_ID, lastIndexRebuild: date },
+    await this.metaModel.findOneAndUpdate(
+      { key: this.META_ID },
+      { key: this.META_ID, lastIndexRebuild: date },
       { upsert: true },
     )
   }

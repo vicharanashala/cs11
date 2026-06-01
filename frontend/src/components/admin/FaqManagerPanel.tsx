@@ -288,7 +288,9 @@ export function FaqManagerPanel({ prefill, autoOpenCreate, onAutoOpenHandled }: 
           <FaqForm
             initial={{
               title: prefill?.title ?? '',
-              category: prefill?.category ?? '',
+              category: typeof prefill?.category === 'string'
+                ? prefill.category
+                : (prefill?.category as any)?.name ?? '',
             }}
             onClose={() => setShowCreateForm(false)}
             onSuccess={handleFormSuccess}

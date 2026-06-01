@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { HttpModule } from '@nestjs/axios'
-import { Question, QuestionSchema } from '../questions/question.schema'
+import { Question, QuestionSchema } from '../questions/schemas/question.schema'
 import { Answer, AnswerSchema } from '../answers/answer.schema'
 import { FAQ, FaqSchema } from '../faqs/faq.schema'
 import { User, UserSchema } from '../users/schemas/user.schema'

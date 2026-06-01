@@ -318,6 +318,8 @@ const contributorName = typeof answer.contributedBy === 'object'
 
 When the API returns `contributedBy` as a string ID (not populated), the answer shows "Community Member" — which is accurate for an anonymous answer, but the fallback message implies it couldn't find a name rather than intentionally hiding it.
 
+**Status: Won't-fix** — "Community Member" is intentional. An answer with un-populated `contributedBy` is genuinely anonymous. The message accurately reflects unknown attribution, not a missing field.
+
 ---
 
 ### 23. `admin.analytics.tsx` status filter never initialises on load
@@ -396,8 +398,8 @@ Fix: same defensive check — `typeof faq.category === 'string' ? faq.category :
 | 18 | 🟡 | `FaqManagerPanel.tsx` | Skeleton rows mixed with real data |
 | 19 | 🟡 | `Navbar.tsx` | `window.location` active route fallback |
 | 20 | 🟡 | `FaqCard.tsx` | Markdown stripping incomplete |
-| 21 | 🟡 | `CategoryFilter.tsx` | `fetchCategories` not a proper hook |
-| 22 | 🟡 | `AnswerCard.tsx` | "Community Member" fallback message |
+| 21 | 🟡 | `CategoryFilter.tsx` | `fetchCategories` not a proper hook | ✅ Fixed 2026-06-01 |
+| 22 | 🟡 | `AnswerCard.tsx` | "Community Member" fallback message | 🚫 Won't-fix (intentional design) |
 | 23 | 🟠 | `admin.analytics.tsx` | Status filter never initialises on load (enabled: false) |
 | 24 | 🟠 | `admin.analytics.tsx` | Category filter sends `undefined` → `'undefined'` string to API |
 | 25 | 🟠 | `admin.faqs.tsx` | Category cell renders `[object Object]` |

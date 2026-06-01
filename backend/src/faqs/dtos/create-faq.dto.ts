@@ -1,10 +1,11 @@
-import { IsNotEmpty, IsOptional, IsString, IsArray, IsMongoId } from 'class-validator'
+import { IsNotEmpty, IsOptional, IsString, IsArray, IsMongoId, MinLength } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
 export class CreateFaqDto {
   @ApiProperty({ example: 'How do I reset my student portal password?' })
   @IsString()
   @IsNotEmpty()
+  @MinLength(10)
   title: string
 
   @ApiProperty({ example: 'Visit the IT helpdesk with your student ID card...' })

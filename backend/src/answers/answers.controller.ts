@@ -14,7 +14,7 @@ import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
 import { AnswersService } from './answers.service'
 import { CreateAnswerDto } from './dtos/create-answer.dto'
 import { VoteDto } from './dtos/vote.dto'
-import { JwtGuard } from '../auth/guards'
+import { JwtGuard, AdminGuard } from '../auth/guards'
 
 @ApiTags('answers')
 @Controller('questions/:questionId/answers')
@@ -65,6 +65,7 @@ export class AnswersController {
 
   @Post('promote-faq')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminGuard)
   @ApiOperation({ summary: 'Promote an answer to an official FAQ entry (admin+)' })
   promote(
     @Param('questionId') questionId: string,

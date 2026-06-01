@@ -48,8 +48,10 @@ export class FaqsService {
     // }
     if (search) {
       try {
-        // Build the $match portion for status + category (applied after $search)
-        const postMatch: Record<string, unknown> = { status: 'published' }
+        const postMatch: Record<string, unknown> = {}
+        if (!isAdmin) {
+          postMatch.status = 'published'
+        }
         if (category) {
           postMatch.category = new Types.ObjectId(category)
         }
@@ -98,21 +100,22 @@ export class FaqsService {
 
         return { data, totalCount, page }
       } catch (err) {
-        // Fall back to case-insensitive regex on title for local dev (no Atlas Search index)
+        // Fall back to case-insensitive regex on title/body for local dev (no Atlas Search index)
         console.warn('[FaqsService] Atlas Search unavailable, falling back to regex:', (err as Error).message)
+        // Falls through to regex-based search below
       }
     }
 
-    // ── No search: original plain Mongoose find ──────────────────────────────
+    // ── Regex-based search (fallback) or plain find ──────────────────────────
     const query: Record<string, unknown> = {}
 
     if (status) {
       query.status = status
     } else if (!isAdmin) {
-      query.status = 'published'
-    } else {
+      // Non-admins only see published FAQs when no status filter is given
       query.status = 'published'
     }
+    // Admin with no status param → query is unfiltered (sees all statuses)
 
     if (category) {
       query.category = new Types.ObjectId(category)
@@ -120,6 +123,14 @@ export class FaqsService {
 
     if (tags && tags.length > 0) {
       query.tags = { $all: tags }
+    }
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { body: { $regex: search, $options: 'i' } },
+        { tags: { $regex: search, $options: 'i' } },
+      ]
     }
 
     const [data, totalCount] = await Promise.all([

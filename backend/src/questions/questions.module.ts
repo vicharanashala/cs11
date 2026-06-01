@@ -1,7 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { HttpModule } from '@nestjs/axios'
-import { Question, QuestionSchema } from './question.schema'
+import { Question, QuestionSchema } from './schemas/question.schema'
 import { DocumentStatus, DocumentStatusSchema } from './schemas/document-status.schema'
 import { QuestionsService } from './questions.service'
 import { QuestionsController } from './questions.controller'

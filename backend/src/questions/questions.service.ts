@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
-import { Question, QuestionDocument } from './question.schema'
+import { Question, QuestionDocument } from './schemas/question.schema'
 import { CreateQuestionDto } from './dtos/create-question.dto'
 import { FaqsService } from '../faqs/faqs.service'
 import { AiMatcherService } from './ai-matcher.service'
