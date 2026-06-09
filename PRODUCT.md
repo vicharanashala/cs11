@@ -29,8 +29,8 @@ Only questions that genuinely stump both layers reach the community queue — wh
 
 ## What Makes This Stand Out
 
-### 🤖 Production-Grade AI Pipeline — No Python Microservice
-Most student projects bolt on AI as an afterthought. We replaced an entire Python FAISS microservice with a **MERN-native Ollama + cosine similarity pipeline** — same stack, no extra service to deploy or maintain.
+### 🤖 AI Pipeline
+We included a MERN-native Ollama + cosine similarity pipeline for student intent detection and FAQ matching.
 
 Two embedding providers, switchable via env var:
 - **Ollama** (`nomic-embed-text`) — fully local, zero API cost
