@@ -2,12 +2,6 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import axios, { AxiosInstance } from 'axios'
 
-/**
- * Embedding provider interface.
- * Implementations:
- *  - Ollama (local, default) — runs a local model via HTTP
- *  - Mock (dev/test only) — returns deterministic pseudo-vectors so matching works without external deps
- */
 export interface EmbeddingProvider {
   embed(texts: string[]): Promise<number[][]>
   embedSingle(text: string): Promise<number[]>
@@ -19,33 +13,103 @@ export class EmbeddingsService {
   private readonly provider: EmbeddingProvider
 
   constructor(private readonly configService: ConfigService) {
-    const providerType = this.configService.get<string>('EMBEDDING_PROVIDER', 'ollama')
+    const providerType = this.configService.get<string>('EMBEDDING_PROVIDER', 'huggingface')
 
     if (providerType === 'mock') {
       this.logger.warn('EMBEDDING_PROVIDER=mock — using deterministic pseudo-embeddings (dev/test only)')
       this.provider = new MockProvider()
-    } else {
-      // Default: Ollama
+    } else if (providerType === 'ollama') {
       this.provider = new OllamaProvider(
         this.configService.get<string>('OLLAMA_URL', 'http://localhost:11434'),
         this.configService.get<string>('OLLAMA_EMBEDDING_MODEL', 'nomic-embed-text'),
         this.logger,
       )
+    } else {
+      // Default: HuggingFace
+      this.provider = new HuggingFaceProvider(
+        this.configService.get<string>('HUGGINGFACE_API_KEY', ''),
+        this.configService.get<string>('HUGGINGFACE_MODEL', 'sentence-transformers/all-MiniLM-L6-v2'),
+        this.logger,
+      )
     }
   }
 
-  /**
-   * Generate an embedding for a single text string.
-   */
   async generateEmbedding(text: string): Promise<number[]> {
     return this.provider.embedSingle(text)
   }
 
-  /**
-   * Generate embeddings for multiple texts.
-   */
   async embedBatch(texts: string[]): Promise<number[][]> {
     return this.provider.embed(texts)
+  }
+}
+
+// ─── HuggingFace Provider ─────────────────────────────────────────────────────
+
+class HuggingFaceProvider implements EmbeddingProvider {
+  private readonly client: AxiosInstance
+  private readonly model: string
+  private readonly logger: Logger
+  private rateLimited = false
+  private rateLimitResetAt: number | null = null
+
+  constructor(apiKey: string, model: string, logger: Logger) {
+    this.client = axios.create({
+      baseURL: 'https://api-inference.huggingface.co',
+      timeout: 30_000,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    })
+    this.model = model
+    this.logger = logger
+  }
+
+  async embedSingle(text: string): Promise<number[]> {
+    const results = await this.embed([text])
+    return results[0] ?? []
+  }
+
+  async embed(texts: string[]): Promise<number[][]> {
+    // If we're rate limited, silently return empty vectors
+    if (this.rateLimited) {
+      // Check if enough time has passed to retry (try again after 1 hour)
+      if (this.rateLimitResetAt && Date.now() > this.rateLimitResetAt) {
+        this.rateLimited = false
+        this.rateLimitResetAt = null
+        this.logger.log('HuggingFace rate limit window passed — retrying')
+      } else {
+        this.logger.warn('HuggingFace rate limited — skipping embedding, falling back to keyword matching')
+        return texts.map(() => [])
+      }
+    }
+
+    try {
+      const response = await this.client.post<number[][]>(
+        `/pipeline/feature-extraction/${this.model}`,
+        { inputs: texts, options: { wait_for_model: true } },
+      )
+      return response.data
+    } catch (error: any) {
+      const status = error?.response?.status
+
+      if (status === 429) {
+        // Rate limited — disable silently until reset
+        this.rateLimited = true
+        this.rateLimitResetAt = Date.now() + 1000 * 60 * 60 // 1 hour
+        this.logger.warn('HuggingFace rate limit hit — AI matching disabled until reset. Falling back to keyword matching.')
+        return texts.map(() => [])
+      }
+
+      if (status === 503) {
+        // Model is loading (cold start) — log and return empty
+        this.logger.warn('HuggingFace model is loading (cold start) — retrying next request')
+        return texts.map(() => [])
+      }
+
+      this.logger.error(`HuggingFace embed failed: ${(error as Error).message}`)
+      return texts.map(() => [])
+    }
   }
 }
 
@@ -95,13 +159,6 @@ class OllamaProvider implements EmbeddingProvider {
 
 // ─── Mock Provider (dev/test only) ───────────────────────────────────────────
 
-/**
- * Deterministic pseudo-embeddings for environments without Ollama.
- * Produces a 384-dim float vector derived from the input text's hash.
- * The same text always produces the same vector, so matching tests work.
- *
- * NOT for production.
- */
 class MockProvider implements EmbeddingProvider {
   private readonly DIM = 384
 
@@ -114,7 +171,6 @@ class MockProvider implements EmbeddingProvider {
   }
 
   private buildVector(text: string): number[] {
-    // Simple splitmix32 hash to seed a deterministic LCG
     let seed = this.hashStr(text)
     const rng = () => {
       seed = (seed + 0x6d2b79f5) | 0
@@ -122,7 +178,6 @@ class MockProvider implements EmbeddingProvider {
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296
     }
-    // Produce a normalised vector so cosine similarity is meaningful
     const raw = Array.from({ length: this.DIM }, () => rng() * 2 - 1)
     const norm = Math.sqrt(raw.reduce((s, v) => s + v * v, 0))
     return norm === 0 ? raw : raw.map((v) => v / norm)

@@ -9,6 +9,7 @@ import { FaqsModule } from '../faqs/faqs.module'
 import { UsersModule } from '../users/users.module'
 import { AdminModule } from '../admin/admin.module'
 import { MetaModule } from '../admin/meta.module'
+import { EventsModule } from '../events/events.module'
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { MetaModule } from '../admin/meta.module'
     UsersModule,
     AdminModule,
     MetaModule,
+    EventsModule,
   ],
   providers: [AnswersService],
   controllers: [AnswersController],

@@ -12,6 +12,7 @@ import { AnswersModule } from '../answers/answers.module'
 import { AdminModule } from '../admin/admin.module'
 import { MetaModule } from '../admin/meta.module'
 import { AiModule } from '../ai/ai.module'
+import { EventsModule } from '../events/events.module'
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AiModule } from '../ai/ai.module'
     AdminModule,
     MetaModule,
     forwardRef(() => AiModule),
+    EventsModule,
   ],
   providers: [
     QuestionsService,
