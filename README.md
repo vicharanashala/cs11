@@ -96,7 +96,7 @@ TypeScript clean: `npx tsc --noEmit` passes with zero errors (25/25 `FRONTEND_IS
 
 ### Backend — TypeScript Clean
 Ollama Vector Search (Phase 1+2+3) done:
-- Python FAISS microservice replaced with MERN-native Ollama + cosine similarity
+- Python FAISS microservice replaced with MERN-native Ollama + cosine similarity / Hugging Face API
 - `FaqEmbedding` schema, `EmbeddingsService` (Ollama + Mock providers), `FaqEmbeddingsService`, `AiMatcherService` all rewritten
 - FAQ `create/update/archive` auto-index embeddings (fire-and-forget)
 - `QuestionsService.create()` embeds question title+body for future duplicate-detection
