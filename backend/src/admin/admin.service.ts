@@ -21,19 +21,46 @@ export class AdminService {
     private readonly faqEmbeddings: FaqEmbeddingsService,
   ) {}
 
+  async getSystemHealth(): Promise<{
+    totalUsers: number
+    totalFaqs: number
+    totalQuestions: number
+    totalAnswers: number
+    openQuestions: number
+    embeddingIndexSize: number
+    lastIndexRebuild: Date | null
+  }> {
+    const [totalUsers, totalFaqs, totalQuestions, totalAnswers, openQuestions, embeddingIndexSize, lastIndexRebuild] =
+      await Promise.all([
+        this.connection.collection('users').countDocuments(),
+        this.faqModel.countDocuments({ status: 'published' }).exec(),
+        this.questionModel.countDocuments().exec(),
+        this.answerModel.countDocuments().exec(),
+        this.questionModel.countDocuments({ status: 'open' }).exec(),
+        this.connection.collection('faq_embeddings').countDocuments(),
+        this.metaService.getLastRebuild(),
+      ])
+
+    return { totalUsers, totalFaqs, totalQuestions, totalAnswers, openQuestions, embeddingIndexSize, lastIndexRebuild }
+  }
+
   async getQueryQueue(filters: {
     page?: number
     limit?: number
+    category?: string
   }): Promise<{ data: Record<string, unknown>[]; totalCount: number; page: number }> {
-    const { page = 1, limit = 20 } = filters
+    const { page = 1, limit = 20, category } = filters
     const skip = (page - 1) * limit
 
-    const query = { status: { $in: ['open', 'in_progress'] } }
+    const matchStage: Record<string, unknown> = { status: { $in: ['open', 'in_progress'] } }
+    if (category) {
+      matchStage['category.slug'] = category
+    }
 
     const [raw, totalCount] = await Promise.all([
       this.questionModel
         .aggregate([
-          { $match: query },
+          { $match: matchStage },
           { $sort: { createdAt: 1 } },
           { $skip: skip },
           { $limit: limit },
@@ -55,17 +82,29 @@ export class AdminService {
             },
           },
           {
+            $lookup: {
+              from: 'categories',
+              localField: 'category',
+              foreignField: '_id',
+              as: 'categoryDoc',
+            },
+          },
+          { $unwind: { path: '$categoryDoc', preserveNullAndEmptyArrays: true } },
+          {
             $project: {
               questionId: { $toString: '$_id' },
               title: 1,
               'askedBy.name': '$askedByUser.name',
+              'category.name': '$categoryDoc.name',
+              'category.slug': '$categoryDoc.slug',
+              'category.color': '$categoryDoc.color',
               createdAt: 1,
               answerCount: { $size: '$answerDocs' },
             },
           },
         ])
         .exec(),
-      this.questionModel.countDocuments(query).exec(),
+      this.questionModel.countDocuments(matchStage).exec(),
     ])
 
     return { data: raw, totalCount, page }
@@ -115,13 +154,14 @@ export class AdminService {
   }
 
   async rebuildIndex(): Promise<{ rebuilt: boolean; count: number }> {
+    let count: number
     try {
-      const count = await this.faqEmbeddings.rebuildAll()
-      await this.metaService.setLastRebuild()
-      return { rebuilt: true, count }
+      count = await this.faqEmbeddings.rebuildAll()
     } catch (error) {
       this.logger.warn(`rebuildIndex failed: ${(error as Error).message}`)
       return { rebuilt: false, count: 0 }
     }
+    await this.metaService.setLastRebuild()
+    return { rebuilt: true, count }
   }
 }

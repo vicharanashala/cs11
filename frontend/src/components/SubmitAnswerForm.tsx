@@ -44,7 +44,7 @@ export function SubmitAnswerForm({ questionId, onSuccess }: SubmitAnswerFormProp
       <form onSubmit={handleSubmit}>
         <textarea
           value={body}
-          onChange={e => setBody(e.target.value)}
+          onChange={e => { setBody(e.target.value); mutation.reset() }}
           rows={4}
           placeholder="Share your knowledge or experience…"
           className={`w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors resize-y ${

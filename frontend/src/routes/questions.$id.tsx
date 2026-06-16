@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
+import { useSocket } from '@/hooks/useSocket'
 import api from '@/lib/api'
 import type { Question, Answer } from '@/types'
 import { AnswerCard } from '@/components/AnswerCard'
@@ -47,6 +49,67 @@ export function QuestionDetailPage() {
   const hasAcceptedAnswer = answers.some(a => a.isAccepted)
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const { on, off } = useSocket()
+
+  // Real-time: update question vote counts
+  useEffect(() => {
+    const handler = (payload: unknown) => {
+      const p = payload as { targetId: string; targetType: string; upvotes: number; downvotes: number }
+      if (p.targetType === 'question' && p.targetId === id) {
+        queryClient.setQueryData(['question', id], (old: Question | undefined) =>
+          old ? { ...old, upvotes: p.upvotes, downvotes: p.downvotes } : old,
+        )
+      }
+    }
+    on('vote:updated', handler)
+    return () => off('vote:updated', handler)
+  }, [id, on, off, queryClient])
+
+  // Real-time: update answer vote counts
+  useEffect(() => {
+    const handler = (payload: unknown) => {
+      const p = payload as { targetId: string; targetType: string; upvotes: number; downvotes: number }
+      if (p.targetType === 'answer') {
+        queryClient.setQueryData(['answers', id], (old: Answer[] | undefined) =>
+          old
+            ? old.map((a) =>
+                a._id === p.targetId
+                  ? { ...a, upvotes: p.upvotes, downvotes: p.downvotes }
+                  : a,
+              )
+            : old,
+        )
+      }
+    }
+    on('vote:updated', handler)
+    return () => off('vote:updated', handler)
+  }, [id, on, off, queryClient])
+
+  // Real-time: refetch answers when a new one is posted
+  useEffect(() => {
+    const handler = (payload: unknown) => {
+      const p = payload as { questionId: string }
+      if (p.questionId === id) {
+        queryClient.invalidateQueries({ queryKey: ['answers', id] })
+      }
+    }
+    on('answer:created', handler)
+    return () => off('answer:created', handler)
+  }, [id, on, off, queryClient])
+
+  // Real-time: update question status in cache
+  useEffect(() => {
+    const handler = (payload: unknown) => {
+      const p = payload as { questionId: string; status: string }
+      if (p.questionId === id) {
+        queryClient.setQueryData(['question', id], (old: Question | undefined) =>
+          old ? { ...old, status: p.status as Question['status'] } : old,
+        )
+      }
+    }
+    on('question:statusChanged', handler)
+    return () => off('question:statusChanged', handler)
+  }, [id, on, off, queryClient])
 
   const voteMutation = useMutation({
     mutationFn: ({ value }: { value: 1 | -1 }) => voteQuestion(id, value),

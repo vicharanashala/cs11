@@ -1,42 +1,52 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSearch } from '@tanstack/react-router'
+import { useSocket } from '@/hooks/useSocket'
 import api from '@/lib/api'
 import { QueryCard } from '@/components/admin/QueryCard'
+import { CategoryFilter } from '@/components/CategoryFilter'
 
-interface QueryQueueItem {
-  questionId: string
-  title: string
-  askedBy: { name: string }
-  createdAt: string
-  answerCount: number
-  status: string
-}
-
-interface QueueResponse {
-  data: QueryQueueItem[]
-  totalCount: number
-  page: number
+interface SearchState {
+  category?: string
 }
 
 export function AdminQueriesPage() {
   const queryClient = useQueryClient()
+  const search = useSearch({ from: '/admin/queries' } as any) as SearchState
+  const [activeCategory, setActiveCategory] = useState<string | undefined>(search.category)
+
   const [page, setPage] = useState(1)
+  const { on, off } = useSocket()
+
+  // Keep local category in sync when URL changes (e.g. browser back/forward)
+  useEffect(() => {
+    setActiveCategory(search.category)
+    setPage(1)
+  }, [search.category])
+
+  // Real-time: refetch queue when any question status changes
+  useEffect(() => {
+    const handler = () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-queries'] })
+    }
+    on('question:statusChanged', handler)
+    return () => off('question:statusChanged', handler)
+  }, [on, off, queryClient])
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['admin-queries', page],
+    queryKey: ['admin-queries', page, activeCategory],
     queryFn: async () => {
-      const { data: res } = await api.get('/admin/queries', {
-        params: { page: String(page), limit: '20' },
-      })
-      return res as QueueResponse
+      const params: Record<string, string> = { page: String(page), limit: '20' }
+      if (activeCategory) params.category = activeCategory
+      const { data: res } = await api.get('/admin/queries', { params })
+      return res as { data: any[]; totalCount: number; page: number }
     },
-    refetchInterval: 30_000,
   })
 
   function handleResolved(questionId: string) {
-    queryClient.setQueryData<QueueResponse>(['admin-queries', page], (old) => {
+    queryClient.setQueryData<{ data: any[]; totalCount: number; page: number }>(['admin-queries', page, activeCategory], (old) => {
       if (!old) return old
-      return { ...old, data: old.data.filter((q) => q.questionId !== questionId) }
+      return { ...old, data: old.data.filter((q: any) => q.questionId !== questionId) }
     })
   }
 
@@ -56,6 +66,11 @@ export function AdminQueriesPage() {
         {isFetching && !isLoading && (
           <span className="text-xs text-indigo-600 animate-pulse">Refreshing...</span>
         )}
+      </div>
+
+      {/* Category filter */}
+      <div className="mb-6">
+        <CategoryFilter baseRoute="/admin/queries" />
       </div>
 
       {isLoading && (

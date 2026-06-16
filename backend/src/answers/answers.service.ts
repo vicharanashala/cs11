@@ -9,6 +9,7 @@ import { CreateAnswerDto } from './dtos/create-answer.dto'
 import { VoteDto } from './dtos/vote.dto'
 import { MetaService } from '../admin/meta.service'
 import { EventsGateway } from '../events/events.gateway'
+import { ReputationService } from '../reputation/reputation.service'
 
 @Injectable()
 export class AnswersService {
@@ -19,6 +20,7 @@ export class AnswersService {
     private readonly httpService: HttpService,
     private readonly metaService: MetaService,
     private readonly events: EventsGateway,
+    private readonly reputationService: ReputationService,
   ) {}
 
   async create(questionId: string, dto: CreateAnswerDto, userId: string): Promise<AnswerDocument> {
@@ -66,6 +68,12 @@ export class AnswersService {
       // Emit real-time events after successful commit
       this.events.emitAnswerCreated(questionId, saved.toObject())
       this.events.emitQuestionStatusChanged(questionId, 'in_progress')
+
+      // Award participation reputation
+      await this.reputationService.award(
+        userId, 'question_answered', 2,
+        saved._id.toString(), 'Answer', 'You posted an answer',
+      )
 
       return saved
     } catch (error) {
@@ -137,18 +145,55 @@ export class AnswersService {
       action = 'added'
     }
 
-    // Update contributor reputation: +2 per net upvote, -1 per net downvote
-    const repDelta: number =
-      action === 'removed'
-        ? newValue === 1 ? -2 : 1
-        : action === 'changed'
-        ? newValue === 1 ? 3 : -3
-        : newValue === 1 ? 2 : -1
-
-    if (answer.contributedBy && repDelta !== 0) {
-      await this.connection
-        .collection('users')
-        .updateOne({ _id: answer.contributedBy }, { $inc: { reputation: repDelta } })
+    // Award/reverse reputation via ReputationService
+    if (answer.contributedBy) {
+      if (action === 'added') {
+        if (newValue === 1) {
+          await this.reputationService.award(
+            answer.contributedBy.toString(), 'answer_upvoted', 10,
+            answerId, 'Answer', 'Your answer was upvoted',
+          )
+        } else {
+          await this.reputationService.award(
+            answer.contributedBy.toString(), 'answer_downvoted', -2,
+            answerId, 'Answer', 'Your answer was downvoted',
+          )
+        }
+      } else if (action === 'removed') {
+        if (newValue === 1) {
+          await this.reputationService.award(
+            answer.contributedBy.toString(), 'answer_downvote_reversed', -10,
+            answerId, 'Answer', 'An upvote on your answer was removed',
+          )
+        } else {
+          await this.reputationService.award(
+            answer.contributedBy.toString(), 'answer_upvoted', 2,
+            answerId, 'Answer', 'A downvote on your answer was removed',
+          )
+        }
+      } else if (action === 'changed') {
+        if (newValue === 1) {
+          // Was downvoted, now upvoted: reverse downvote (-2) + new upvote (+10) = +12 net
+          await this.reputationService.award(
+            answer.contributedBy.toString(), 'answer_downvote_reversed', -2,
+            answerId, 'Answer', 'Your downvoted answer was upvoted',
+          )
+          await this.reputationService.award(
+            answer.contributedBy.toString(), 'answer_upvoted', 10,
+            answerId, 'Answer', 'Your answer was upvoted',
+          )
+        } else {
+          // Was upvoted, now downvoted: reverse upvote (-10) + new downvote (-2) = -12 net
+          await this.reputationService.award(
+            answer.contributedBy.toString(), 'answer_upvoted', -10,
+            answerId, 'Answer', 'An upvote on your answer was reversed to a downvote',
+          )
+          await this.reputationService.award(
+            answer.contributedBy.toString(), 'answer_downvoted', -2,
+            answerId, 'Answer', 'Your answer was downvoted',
+          )
+        }
+      }
     }
 
     const updated = await this.answerModel.findById(answerId).lean().exec()
@@ -212,6 +257,15 @@ export class AnswersService {
       await session.commitTransaction()
 
       this.events.emitQuestionStatusChanged(questionId, 'resolved')
+
+      // Award reputation for accepted answer
+      const acceptedAnswer = await this.answerModel.findById(answerId).lean()
+      if (acceptedAnswer) {
+        await this.reputationService.award(
+          acceptedAnswer.contributedBy.toString(), 'answer_accepted', 15,
+          answerId, 'Answer', 'Your answer was accepted',
+        )
+      }
     } catch (error) {
       await session.abortTransaction()
       throw error
@@ -308,6 +362,14 @@ export class AnswersService {
         .catch(() => { /* silently ignore */ })
 
       this.events.emitFaqPublished({ title: dto.title, category: dto.category, tags: dto.tags })
+
+      // Award high-quality contribution reputation to the answer author
+      if (answer.contributedBy) {
+        await this.reputationService.award(
+          answer.contributedBy.toString(), 'faq_contributed', 25,
+          targetAnswerId, 'FAQ', 'Your answer was promoted to a FAQ',
+        )
+      }
     } catch (error) {
       await session.abortTransaction()
       throw error

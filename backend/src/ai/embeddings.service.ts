@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import axios, { AxiosInstance } from 'axios'
+import { HuggingFaceProvider } from './providers/huggingface.provider'
 
 export interface EmbeddingProvider {
   embed(texts: string[]): Promise<number[][]>
@@ -13,7 +14,7 @@ export class EmbeddingsService {
   private readonly provider: EmbeddingProvider
 
   constructor(private readonly configService: ConfigService) {
-    const providerType = this.configService.get<string>('EMBEDDING_PROVIDER', 'huggingface')
+    const providerType = this.configService.get<string>('EMBEDDING_PROVIDER', 'ollama')
 
     if (providerType === 'mock') {
       this.logger.warn('EMBEDDING_PROVIDER=mock — using deterministic pseudo-embeddings (dev/test only)')
@@ -24,11 +25,21 @@ export class EmbeddingsService {
         this.configService.get<string>('OLLAMA_EMBEDDING_MODEL', 'nomic-embed-text'),
         this.logger,
       )
+    } else if (providerType === 'huggingface') {
+      const apiKey = this.configService.get<string>('HUGGINGFACE_API_KEY', '')
+      if (!apiKey) {
+        throw new Error('HUGGINGFACE_API_KEY is required when EMBEDDING_PROVIDER=huggingface')
+      }
+      this.provider = new HuggingFaceProvider({
+        apiKey,
+        model: this.configService.get<string>('HUGGINGFACE_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2'),
+        logger: this.logger,
+      })
     } else {
-      // Default: HuggingFace
-      this.provider = new HuggingFaceProvider(
-        this.configService.get<string>('HUGGINGFACE_API_KEY', ''),
-        this.configService.get<string>('HUGGINGFACE_MODEL', 'sentence-transformers/all-MiniLM-L6-v2'),
+      this.logger.warn(`Unknown EMBEDDING_PROVIDER="${providerType}" — defaulting to Ollama`)
+      this.provider = new OllamaProvider(
+        this.configService.get<string>('OLLAMA_URL', 'http://localhost:11434'),
+        this.configService.get<string>('OLLAMA_EMBEDDING_MODEL', 'nomic-embed-text'),
         this.logger,
       )
     }
@@ -40,76 +51,6 @@ export class EmbeddingsService {
 
   async embedBatch(texts: string[]): Promise<number[][]> {
     return this.provider.embed(texts)
-  }
-}
-
-// ─── HuggingFace Provider ─────────────────────────────────────────────────────
-
-class HuggingFaceProvider implements EmbeddingProvider {
-  private readonly client: AxiosInstance
-  private readonly model: string
-  private readonly logger: Logger
-  private rateLimited = false
-  private rateLimitResetAt: number | null = null
-
-  constructor(apiKey: string, model: string, logger: Logger) {
-    this.client = axios.create({
-      baseURL: 'https://api-inference.huggingface.co',
-      timeout: 30_000,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-    })
-    this.model = model
-    this.logger = logger
-  }
-
-  async embedSingle(text: string): Promise<number[]> {
-    const results = await this.embed([text])
-    return results[0] ?? []
-  }
-
-  async embed(texts: string[]): Promise<number[][]> {
-    // If we're rate limited, silently return empty vectors
-    if (this.rateLimited) {
-      // Check if enough time has passed to retry (try again after 1 hour)
-      if (this.rateLimitResetAt && Date.now() > this.rateLimitResetAt) {
-        this.rateLimited = false
-        this.rateLimitResetAt = null
-        this.logger.log('HuggingFace rate limit window passed — retrying')
-      } else {
-        this.logger.warn('HuggingFace rate limited — skipping embedding, falling back to keyword matching')
-        return texts.map(() => [])
-      }
-    }
-
-    try {
-      const response = await this.client.post<number[][]>(
-        `/pipeline/feature-extraction/${this.model}`,
-        { inputs: texts, options: { wait_for_model: true } },
-      )
-      return response.data
-    } catch (error: any) {
-      const status = error?.response?.status
-
-      if (status === 429) {
-        // Rate limited — disable silently until reset
-        this.rateLimited = true
-        this.rateLimitResetAt = Date.now() + 1000 * 60 * 60 // 1 hour
-        this.logger.warn('HuggingFace rate limit hit — AI matching disabled until reset. Falling back to keyword matching.')
-        return texts.map(() => [])
-      }
-
-      if (status === 503) {
-        // Model is loading (cold start) — log and return empty
-        this.logger.warn('HuggingFace model is loading (cold start) — retrying next request')
-        return texts.map(() => [])
-      }
-
-      this.logger.error(`HuggingFace embed failed: ${(error as Error).message}`)
-      return texts.map(() => [])
-    }
   }
 }
 

@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { useSearch } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { useFaqs } from '@/hooks/useFaqs'
+import { useSocket } from '@/hooks/useSocket'
 import { FaqCard } from '@/components/FaqCard'
 import { SearchBar } from '@/components/SearchBar'
 import { CategoryFilter } from '@/components/CategoryFilter'
@@ -11,6 +14,18 @@ interface FaqsSearch {
 
 export function FaqsPage() {
   const search = useSearch({ from: '/faqs' } as any) as FaqsSearch
+  const queryClient = useQueryClient()
+  const { on, off } = useSocket()
+
+  // Real-time: surface newly published FAQs
+  useEffect(() => {
+    const handler = () => {
+      queryClient.invalidateQueries({ queryKey: ['faqs'] })
+    }
+    on('faq:published', handler)
+    return () => off('faq:published', handler)
+  }, [on, off, queryClient])
+
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useFaqs(
     search.search ?? '',
     search.category ?? '',

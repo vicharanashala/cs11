@@ -124,7 +124,7 @@ export function QuestionForm({ mutation: injectedMutation, onAiMatch, onSuccess 
           id="q-title"
           type="text"
           value={form.title}
-          onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+          onChange={e => { setForm(f => ({ ...f, title: e.target.value })); mutation.reset() }}
           placeholder="e.g. How do I apply for on-campus housing?"
           className={`w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors ${
             errors.title ? 'border-red-400 focus:border-red-500' : 'border-gray-300 focus:border-indigo-500'
@@ -141,7 +141,7 @@ export function QuestionForm({ mutation: injectedMutation, onAiMatch, onSuccess 
           id="q-body"
           rows={5}
           value={form.body}
-          onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
+          onChange={e => { setForm(f => ({ ...f, body: e.target.value })); mutation.reset() }}
           placeholder="Provide more context about your question..."
           className={`w-full px-3 py-2 border rounded-lg text-sm outline-none transition-colors resize-y ${
             errors.body ? 'border-red-400 focus:border-red-500' : 'border-gray-300 focus:border-indigo-500'

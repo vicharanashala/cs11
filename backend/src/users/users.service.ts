@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import { User, UserDocument } from './schemas/user.schema'
@@ -29,8 +29,76 @@ export class UsersService {
     return bcrypt.compare(password, user.passwordHash)
   }
 
-  async updateRole(userId: string, role: string): Promise<UserDocument> {
-    const user = await this.userModel.findByIdAndUpdate(userId, { role }, { new: true }).exec()
+  async findAll(params: {
+    page?: number
+    limit?: number
+    search?: string
+  }): Promise<{ data: Partial<User>[]; totalCount: number; page: number }> {
+    const { page = 1, limit = 20, search } = params
+    const skip = (page - 1) * limit
+
+    const filter: Record<string, unknown> = {}
+    if (search && search.trim()) {
+      const re = new RegExp(search.trim(), 'i')
+      filter.$or = [{ name: re }, { email: re }]
+    }
+
+    const [users, totalCount] = await Promise.all([
+      this.userModel
+        .find(filter, { passwordHash: 0 })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.userModel.countDocuments(filter).exec(),
+    ])
+
+    return { data: users as Partial<User>[], totalCount, page }
+  }
+
+  async updateRole(userId: string, newRole: string, actorUserId: string): Promise<UserDocument> {
+    if (userId === actorUserId) {
+      throw new ForbiddenException('Cannot change your own role')
+    }
+
+    if (newRole === 'superadmin') {
+      throw new BadRequestException('Cannot assign the superadmin role')
+    }
+
+    if (newRole !== 'intern' && newRole !== 'admin') {
+      throw new BadRequestException('Invalid role')
+    }
+
+    const target = await this.userModel.findById(userId).exec()
+    if (!target) throw new NotFoundException('User not found')
+    if (target.role === 'superadmin') {
+      throw new BadRequestException('Cannot change the role of a superadmin')
+    }
+
+    const updated = await this.userModel.findByIdAndUpdate(userId, { role: newRole }, { new: true }).exec()
+    if (!updated) throw new NotFoundException('User not found')
+    return updated
+  }
+
+  async deactivate(userId: string, actorUserId: string): Promise<UserDocument> {
+    if (userId === actorUserId) {
+      throw new ForbiddenException('Cannot deactivate your own account')
+    }
+
+    const target = await this.userModel.findById(userId).exec()
+    if (!target) throw new NotFoundException('User not found')
+    if (target.role === 'superadmin') {
+      throw new ForbiddenException('Cannot deactivate a superadmin account')
+    }
+
+    const updated = await this.userModel.findByIdAndUpdate(userId, { isActive: false }, { new: true }).exec()
+    if (!updated) throw new NotFoundException('User not found')
+    return updated
+  }
+
+  async reactivate(userId: string): Promise<UserDocument> {
+    const user = await this.userModel.findByIdAndUpdate(userId, { isActive: true }, { new: true }).exec()
     if (!user) throw new NotFoundException('User not found')
     return user
   }

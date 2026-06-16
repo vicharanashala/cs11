@@ -61,8 +61,11 @@ export class QuestionsService {
 
   async create(dto: CreateQuestionDto, userId: string, aiMatchFaqId?: string): Promise<{ questionId: string; message: string }> {
     const question = new this.questionModel({
-      ...dto,
+      title: dto.title,
+      body: dto.body,
+      tags: dto.tags ?? [],
       askedBy: new Types.ObjectId(userId),
+      category: dto.category ? new Types.ObjectId(dto.category) : undefined,
       aiMatchFaqId: aiMatchFaqId ? new Types.ObjectId(aiMatchFaqId) : undefined,
       status: 'open',
     })

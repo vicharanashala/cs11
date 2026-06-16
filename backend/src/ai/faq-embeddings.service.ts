@@ -85,17 +85,23 @@ export class FaqEmbeddingsService {
     // Embed in batches of 16 to avoid hammering Ollama
     const BATCH = 16
     const allVectors: number[][] = []
+    let allBatchesFailed = true
     for (let i = 0; i < texts.length; i += BATCH) {
       const batch = texts.slice(i, i + BATCH)
       try {
         const vectors = await this.embeddingsService.embedBatch(batch)
         allVectors.push(...vectors)
+        if (vectors.some((v) => v.length > 0)) allBatchesFailed = false
       } catch (error) {
         this.logger.error(`Batch embed failed at offset ${i}: ${(error as Error).message}`)
         // Push empty vectors to keep alignment; these FAQs won't match anything
         allVectors.push(...batch.map(() => []))
       }
       this.logger.log(`rebuildAll: embedded batch ${Math.floor(i / BATCH) + 1}/${Math.ceil(texts.length / BATCH)}`)
+    }
+
+    if (allBatchesFailed && texts.length > 0) {
+      throw new Error('AI service unreachable — all batches failed')
     }
 
     // Bulk upsert

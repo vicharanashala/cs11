@@ -5,6 +5,8 @@ import api from '@/lib/api'
 interface AuthUser {
   /** Matches `user._id` (MongoDB ObjectId) returned by `/auth/me` */
   _id: string
+  /** Alias of `_id` — same underlying value, for consumers that expect `id` */
+  id: string
   name: string
   role: 'intern' | 'admin' | 'superadmin'
   isFirstTimeIntern: boolean
@@ -25,8 +27,10 @@ function decodeJwt(token: string): AuthUser | null {
     const payload = token.split('.')[1]
     const decoded = JSON.parse(atob(payload))
     // JWT claim "userId" holds the MongoDB ObjectId string
+    const _id = decoded.userId
     return {
-      _id: decoded.userId,
+      _id,
+      id: _id,
       name: decoded.name ?? '',
       role: decoded.role,
       isFirstTimeIntern: decoded.isFirstTimeIntern ?? true,
@@ -51,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(decoded)
         api.get('/auth/me')
           .then(({ data }) =>
-            setUser({ _id: data._id, name: data.name, role: data.role, isFirstTimeIntern: data.isFirstTimeIntern ?? true }),
+            setUser({ _id: data._id, id: data._id, name: data.name, role: data.role, isFirstTimeIntern: data.isFirstTimeIntern ?? true }),
           )
           .catch(() => {
             localStorage.removeItem('token')
@@ -77,7 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       api.get('/auth/me')
         .then(({ data }) => {
-          const fullUser = { _id: data._id, name: data.name, role: data.role, isFirstTimeIntern: data.isFirstTimeIntern ?? true }
+          const _id = data._id
+          const fullUser = { _id, id: _id, name: data.name, role: data.role, isFirstTimeIntern: data.isFirstTimeIntern ?? true }
           setUser(fullUser)
           localStorage.setItem('user', JSON.stringify(fullUser))
         })

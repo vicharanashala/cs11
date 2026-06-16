@@ -1,34 +1,36 @@
 # CrowdFAQ
 
+**A living FAQ platform for student communities — where the crowd answers, AI assists, and admins step in last.**
+
 > Built for Vicharanashala Summership · Team 11
 
 ---
 
 ## The Problem
 
-Every internship cohort, admins face the same 10 questions on loop — *"Where's my offer letter?" "Has my NOC been approved?" "When does onboarding start?"* — buried across chat threads, with no single source of truth. New students don't know where to look. Admins burn time answering things that were answered last cohort, and the cohort before that.
+Every cohort, the same 10 questions recycle through chat: *"Where's my offer letter?" "Has my NOC been approved?" "When does onboarding start?"* They're scattered across threads, unanswered, or answered repeatedly by admins who already have real work to do.
 
-CrowdFAQ breaks the cycle.
+CrowdFAQ breaks that loop.
 
 ---
 
-## What We Built
+## What Is CrowdFAQ
 
-A community-driven FAQ platform where **students self-serve, AI intercepts, and admins only handle what truly needs them.**
+A community-driven FAQ platform with three-tier intelligence:
 
-The flow is simple: a student asks a question. Before it ever reaches a human, CrowdFAQ runs it through two layers of intelligence —
+1. **Intent Detection (instant)** — keyword match for document queries (NOC, offer letter, onboarding). Returns a live status card with progress bar, current state, and rejection reason. No queue, no AI call, zero latency.
 
-1. **Intent detection** — if it's a known document query (NOC, offer letter, onboarding), the platform returns a live status card instantly. No queue. No AI call. No wait.
-2. **Semantic matching** — if it's not a document query, the question is embedded and compared against the entire FAQ index using cosine similarity. A confident match (≥ 0.75) surfaces the answer immediately with an AI suggestion banner.
+2. **Semantic Matching (fast)** — questions that aren't document queries get embedded and compared against the FAQ index via cosine similarity. A confident match (≥ 0.75) surfaces the answer immediately with an AI suggestion banner.
 
-Only questions that genuinely stump both layers reach the community queue — where interns answer, vote, and collectively resolve. Admins step in last, with a structured queue, auto-refresh, and one-click FAQ promotion.
+3. **Community Queue (when needed)** — questions that stump both layers go to the crowd. Interns answer, vote, and resolve. Admins handle only what genuinely needs them.
 
-**The result:** fewer redundant questions, faster answers, and admins who can focus on problems that actually need them.
+**Fewer redundant questions. Faster answers. Admins freed for problems that actually matter.**
 
 ---
 
 ## What Makes This Stand Out
 
+<<<<<<< HEAD
 ### 🤖 AI Pipeline
 We included a MERN-native Ollama + cosine similarity pipeline for student intent detection and FAQ matching.
 
@@ -37,15 +39,19 @@ Two embedding providers, switchable via env var:
 - **Hugging Face Inference API** — cloud-ready, 1,000 req/day quota
 
 If either provider goes down, questions proceed normally. **No student is ever blocked.**
+=======
+### 🤖 Native AI Pipeline — No Python Microservice
+Most student projects bolt on AI as an afterthought with a separate Python service to deploy. CrowdFAQ keeps it MERN-native: embeddings via **Ollama** (`nomic-embed-text`) with application-level cosine similarity, running entirely within the NestJS backend. If Ollama goes down, the platform degrades gracefully — questions still save, no student is ever blocked.
+>>>>>>> ef0927e (fixes and feats)
 
 ### ⚡ Intent Detection Before AI
-For the most common student queries — document statuses — we don't even call the embedding model. A keyword match fires first and returns a live `DocumentStatusCard` with progress bar, current state, and rejection reason. Instant. Zero latency.
+For document-status queries, CrowdFAQ skips the embedding model entirely. A keyword match fires first and returns a live `DocumentStatusCard` — progress bar, current state, rejection reason. Instant. Zero latency.
 
 ### 🧪 Actually Tested
-28 E2E tests. 28 passing. Across auth, voting, questions, and admin flows — backed by `mongodb-memory-server` so tests are isolated and reproducible. Frontend ships with zero TypeScript errors (25 issues identified and resolved).
+28 E2E tests, 28 passing. Auth, voting, questions, and admin flows — backed by `mongodb-memory-server` so tests are isolated and reproducible. The frontend ships with zero TypeScript errors (25 issues identified and resolved).
 
-### 🔍 Query Insights for Admins
-The admin dashboard includes a **Query Insights tab** that surfaces per-category coverage gaps — questions that keep coming in without a matching FAQ. One click creates the FAQ. The knowledge base improves itself.
+### 📊 Query Insights for Admins
+The admin dashboard surfaces per-category coverage gaps — questions with no matching FAQ. One click opens the FAQ creation form prefilled for that category. The knowledge base improves itself.
 
 ---
 
@@ -53,13 +59,13 @@ The admin dashboard includes a **Query Insights tab** that surfaces per-category
 
 | Feature | What It Does |
 |---------|-------------|
-| 🔐 **Auth & Roles** | JWT auth, role-based guards (`intern` / `admin` / `superadmin`), first-time WelcomeBanner |
-| 📚 **FAQ Knowledge Base** | Search + category filters + infinite scroll; admin create/edit/archive |
-| 🤖 **AI Matching** | Ollama + Hugging Face embeddings; cosine similarity; graceful degradation |
-| ⚡ **Intent Detection** | Instant document status (NOC, offer letter, onboarding) — no queue, no AI |
-| 🙋 **Community Q&A** | Ask, answer, upvote/downvote, accept; official admin answers |
-| 🚩 **Moderation** | Flag flow with admin review queue (pending / reviewed / dismissed / resolved) |
-| 📊 **Admin Dashboard** | Resolution queue, analytics, Query Insights tab, 30s auto-refresh |
+| **Auth & Roles** 🔐 | JWT login/register, role-based guards (intern / admin / superadmin), first-time WelcomeBanner |
+| **FAQ Knowledge Base** 📚 | Paginated browse, category filters, debounced search, admin create/edit/archive |
+| **Intent Detection** ⚡ | Document status (NOC, offer letter, onboarding) without touching the queue or calling AI |
+| **AI Matching** 🤖 | Ollama embeddings + cosine similarity; graceful degradation if embedding service is down |
+| **Community Q&A** 🙋 | Ask, answer, upvote/downvote, accept; official admin answers; accepted answer pinned |
+| **Moderation** 🚩 | Flag/report flow (FlagButton + FlagModal); admin review queue (pending / reviewed / dismissed / resolved) |
+| **Admin Dashboard** 📊 | Resolution queue (30s auto-refresh), FAQ manager, analytics, Query Insights |
 
 ---
 
@@ -69,15 +75,15 @@ The admin dashboard includes a **Query Insights tab** that surfaces per-category
 Student submits question
         │
         ▼
-Intent detection (keyword match)
+Intent detection — keyword match on title + body
         │
-   Match? ──yes──▶ Return DocumentStatusCard  ← instant, no DB write, no AI
+   Match? ──yes──▶ Return DocumentStatusCard (no DB write, no AI call)
         │
         no
         ▼
-AI embedding + cosine similarity vs FAQ index
+Embed question → cosine similarity vs FAQ index
         │
-   Match ≥ 0.75? ──yes──▶ Show AiSuggestionBanner + FAQ  ← resolved in seconds
+   Match ≥ 0.75? ──yes──▶ Show AI suggestion banner with matched FAQ
         │
         no
         ▼
@@ -90,7 +96,7 @@ Community answers + votes
         │
         no
         ▼
-Admin resolves / promotes to FAQ  ← last resort, not first response
+Admin resolves or promotes to FAQ ← last resort, not first response
 ```
 
 ---
@@ -100,10 +106,10 @@ Admin resolves / promotes to FAQ  ← last resort, not first response
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18, Vite 6, TanStack Router v1, TanStack Query v5, Tailwind CSS v3 |
-| Backend | NestJS, MongoDB |
-| AI / Embeddings | Ollama (`nomic-embed-text`), Hugging Face Inference API |
+| Backend | NestJS, Mongoose 8, MongoDB Atlas |
+| AI / Embeddings | Ollama (`nomic-embed-text`) with application-level cosine similarity |
 | Testing | Jest + `mongodb-memory-server` — 28/28 E2E tests passing |
-| Auth | JWT, role-based guards, Axios interceptor |
+| Auth | JWT, role-based guards, Axios 401 interceptor |
 
 ---
 
@@ -113,22 +119,29 @@ Admin resolves / promotes to FAQ  ← last resort, not first response
 |------|--------|
 | Frontend TypeScript | ✅ Zero errors — 25/25 issues resolved |
 | Backend TypeScript | ✅ Clean |
-| AI matching (Ollama) | ✅ Phase 1–3 complete |
-| Hugging Face integration | ✅ Live (1,000 req/day) |
+| Intent detection | ✅ Live — fires before AI match |
+| AI matching (Ollama) | ✅ Live — degrades gracefully if offline |
 | E2E test suite | ✅ 28/28 passing |
-| Flag & moderation | ✅ Complete |
-| Superadmin pages | 🔜 Coming next |
+| Flag & moderation | ✅ Complete end-to-end |
+| Query Insights | ✅ Built — coverage gaps surfaced per category |
+| Admin analytics | ✅ Overview tab + AI index staleness warning |
+| Superadmin pages | 🔜 Not built |
 | Real-time vote updates | 🔜 Socket.IO — Phase 2 |
 
 ---
 
 ## Roadmap
 
-- **Superadmin** — platform-level community and user management
-- **Real-time updates** — Socket.IO live vote counts
-- **Duplicate detection** — `questionEmbedding` vectors already stored; similarity check before submission is the next step
-- **FAQ auto-promotion** — surface high-resolution questions to admins as FAQ candidates automatically
+| Feature | Status |
+|---------|--------|
+| Socket.IO live vote counts | 🔜 Phase 2 |
+| Duplicate detection | 🔜 Uses stored `questionEmbedding` vectors |
+| FAQ auto-promotion | 🔜 High-resolution questions → admin FAQ candidates |
 
 ---
 
+<<<<<<< HEAD
 *Team 11 · Vicharanashala Summership · 11 members*
+=======
+*CrowdFAQ is maintained by Team 11 — 11 members of the Vicharanashala Summership cohort.*
+>>>>>>> ef0927e (fixes and feats)

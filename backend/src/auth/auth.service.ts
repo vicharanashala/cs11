@@ -40,6 +40,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials')
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account deactivated. Please contact your administrator.')
+    }
+
     const token = this.generateToken(user._id.toString(), user.email, user.role, user.name, user.isFirstTimeIntern ?? true)
     const { passwordHash, ...userWithoutPassword } = user.toObject()
     return { token, user: userWithoutPassword }

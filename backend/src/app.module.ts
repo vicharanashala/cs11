@@ -12,6 +12,7 @@ import { AiModule } from './ai/ai.module'
 import { SeedModule } from './seed/seed.module'
 import { AdminModule } from './admin/admin.module'
 import { EventsModule } from './events/events.module'
+import { ReputationModule } from './reputation/reputation.module'
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { EventsModule } from './events/events.module'
     SeedModule,
     AdminModule,
     EventsModule,
+    ReputationModule,
   ],
 })
 export class AppModule {}

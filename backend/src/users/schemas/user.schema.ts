@@ -22,6 +22,9 @@ export class User {
 
   @Prop({ default: true })
   isFirstTimeIntern: boolean
+
+  @Prop({ default: true })
+  isActive: boolean
 }
 
 export const UserSchema = SchemaFactory.createForClass(User)

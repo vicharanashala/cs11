@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from '@tanstack/react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useFaq } from '@/hooks/useFaq'
+import { useSocket } from '@/hooks/useSocket'
 import { FlagButton } from '@/components/FlagButton'
 import api from '@/lib/api'
 
@@ -114,6 +115,21 @@ export function FaqDetailPage() {
   const [feedbackSent, setFeedbackSent] = useState(false)
 
   const { data: faq, isLoading } = useFaq(id!)
+  const { on, off } = useSocket()
+
+  // Real-time: update FAQ vote counts
+  useEffect(() => {
+    const handler = (payload: unknown) => {
+      const p = payload as { targetId: string; targetType: string; upvotes: number; downvotes: number }
+      if (p.targetType === 'faq' && p.targetId === id) {
+        queryClient.setQueryData(['faqs', id], (old: Record<string, unknown> | undefined) =>
+          old ? { ...old, upvotes: p.upvotes, downvotes: p.downvotes } : old,
+        )
+      }
+    }
+    on('vote:updated', handler)
+    return () => off('vote:updated', handler)
+  }, [id, on, off, queryClient])
 
   const categoryName =
     typeof faq?.category === 'string'

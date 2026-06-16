@@ -11,7 +11,10 @@ import { AdminQueriesPage } from './admin.queries'
 import { AdminFaqsPage } from './admin.faqs'
 import { AdminAnalyticsPage } from './admin.analytics'
 import { AdminFlagsPage } from './admin.flags'
+import { AdminUsersPage } from './admin.users'
+import { AdminSystemPage } from './admin.system'
 import { ResolvePage } from './resolve'
+import { ReputationPage } from './reputation'
 import { Navbar } from '@/components/Navbar'
 
 // ---- Guard helpers ----
@@ -124,6 +127,13 @@ const resolveRoute = createRoute({
   component: () => <ResolvePage />,
 })
 
+const reputationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reputation',
+  beforeLoad: () => requireIntern(),
+  component: () => <ReputationPage />,
+})
+
 // ---- Admin section (has its own sidebar layout) ----
 
 const adminLayoutRoute = createRoute({
@@ -161,6 +171,34 @@ const adminFlagsRoute = createRoute({
   component: () => <AdminFlagsPage />,
 })
 
+const adminUsersRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: 'users',
+  beforeLoad: (_ctx) => {
+    const user = localStorage.getItem('user')
+    if (!user) throw redirect({ to: '/login' })
+    const { role } = JSON.parse(user) as { role: string }
+    if (role !== 'superadmin') {
+      throw redirect({ to: '/admin/queries', search: {} })
+    }
+  },
+  component: () => <AdminUsersPage />,
+})
+
+const adminSystemRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: 'system',
+  beforeLoad: (_ctx) => {
+    const user = localStorage.getItem('user')
+    if (!user) throw redirect({ to: '/login' })
+    const { role } = JSON.parse(user) as { role: string }
+    if (role !== 'superadmin') {
+      throw redirect({ to: '/admin/queries', search: {} })
+    }
+  },
+  component: () => <AdminSystemPage />,
+})
+
 // ---- Route tree ----
 
 const routeTree = rootRoute.addChildren([
@@ -178,6 +216,9 @@ const routeTree = rootRoute.addChildren([
   adminFaqsRoute,
   adminAnalyticsRoute,
   adminFlagsRoute,
+  adminUsersRoute,
+  adminSystemRoute,
+  reputationRoute,
 ])
 
 export const router = createRouter({ routeTree })

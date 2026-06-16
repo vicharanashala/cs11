@@ -49,7 +49,7 @@ export function FaqCard({ faq }: FaqCardProps) {
       {/* Body preview — strip markdown, truncate */}
       <p className="text-sm text-gray-500 mb-3 line-clamp-2">
         {stripMarkdown(faq.body).slice(0, 120)}
-        {faq.body.length > 120 ? '…' : ''}
+        {stripMarkdown(faq.body).length > 120 ? '…' : ''}
       </p>
 
       {/* Tags */}

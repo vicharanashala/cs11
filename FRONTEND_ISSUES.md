@@ -1,6 +1,6 @@
 # Frontend Issues
 
-> Audited: 2026-05-29. Last updated: 2026-06-05 (critical batch resolved). TypeScript: `npx tsc --noEmit` passes cleanly.
+> Audited: 2026-05-29. Last updated: 2026-06-15 (Bug 6, 8, 11, 12, 13 fixed; 8 other bugs confirmed already resolved). TypeScript: `npx tsc --noEmit` passes cleanly.
 
 ---
 
@@ -383,21 +383,21 @@ Fix: same defensive check — `typeof faq.category === 'string' ? faq.category :
 | 3 | 🔴 | `CategoryFilter.tsx` | Selected state always `false` | ✅ Fixed 2026-06-05 — `activeCategory = search.category`; `isActive` correctly uses `===` |
 | 4 | 🔴 | `useFaqs.ts` / `types/index.ts` | Wrong field name breaks pagination | ✅ Fixed 2026-06-05 — `fetchFaqs` maps `totalCount → total` before returning |
 | 5 | 🟠 | `questions.tsx` | `userId` param not what backend expects | ✅ Fixed 2026-06-05 — removed dead param; backend uses JWT userId via `req.user.userId`, not query param |
-| 6 | 🟠 | `AuthContext.tsx`, `AnswerCard.tsx`, `questions.tsx` | `user.id` vs `user._id` — comparison always fails |
+| 6 | 🟠 | `AuthContext.tsx`, `AnswerCard.tsx`, `questions.tsx` | `user.id` vs `user._id` — comparison always fails | ✅ Fixed 2026-06-15 — `AuthUser` interface now has `id` alias; all context sources (`decodeJwt`, `useEffect`, `login`) set both `_id` and `id` from the same value |
 | 7 | 🟠 | `login.tsx`, `signup.tsx` | Unnecessary `search: {}` in navigate |
 | 8 | 🟠 | `ask.tsx` | `pendingPayload` set to wrong value |
 | 9 | 🟠 | `CategoryFilter.tsx`, `SearchBar.tsx` | Hardcoded `/faqs` route breaks portability |
-| 10 | 🟠 | `AnswerCard.tsx` | Negative vote score unstyled |
+| 10 | 🟠 | `AnswerCard.tsx` | Negative vote score unstyled | ✅ Fixed 2026-06-05 — 3-way conditional score colour (green/red/gray) already in place |
 | 11 | 🟠 | `AuthContext.tsx` | `login` is unnecessarily `async` |
-| 12 | 🟠 | `SubmitAnswerForm.tsx` | Error not cleared on retry |
-| 13 | 🟠 | `QuestionForm.tsx` | API error not cleared on retry |
-| 14 | 🟠 | `admin.queries.tsx` | Status badge misses `in_progress`/`closed` |
+| 12 | 🟠 | `SubmitAnswerForm.tsx` | Error not cleared on retry | ✅ Fixed 2026-06-15 — `mutation.reset()` called on textarea `onChange` |
+| 13 | 🟠 | `QuestionForm.tsx` | API error not cleared on retry | ✅ Fixed 2026-06-15 — `mutation.reset()` called on title/body `onChange` |
+| 14 | 🟠 | `admin.queries.tsx` | Status badge misses `in_progress`/`closed` | ✅ Fixed 2026-06-15 — `QueryCard` badge now handles all 4 statuses (open=blue, in_progress=yellow, resolved=green, closed=gray) |
 | 15 | 🟠 | `FaqManagerPanel.tsx` | `faq.category` renders `[object Object]` |
-| 16 | 🟡 | `AiSuggestionBanner.tsx` | `0%` badge for undefined confidence |
+| 16 | 🟡 | `AiSuggestionBanner.tsx` | `0%` badge for undefined confidence | ✅ Fixed 2026-06-05 — `confidencePct` already nullable; badge shows "New match" when confidence is absent |
 | 17 | 🟡 | `SubmitAnswerForm.tsx` | No loading text on pending button |
 | 18 | 🟡 | `FaqManagerPanel.tsx` | Skeleton rows mixed with real data | 🔴 FaqManagerPanel — see issue description; ⚠️ questions.tsx skeleton bug also fixed 2026-06-05 (ternary `isLoading ? Skeleton : ...` instead of `&&`) |
 | 19 | 🟡 | `Navbar.tsx` | `window.location` active route fallback |
-| 20 | 🟡 | `FaqCard.tsx` | Markdown stripping incomplete |
+| 20 | 🟡 | `FaqCard.tsx` | Markdown stripping incomplete | ✅ Fixed 2026-06-15 — `stripMarkdown` already comprehensive; fix applied: truncation check now uses `stripMarkdown(faq.body).length` instead of `faq.body.length` |
 | 21 | 🟡 | `CategoryFilter.tsx` | `fetchCategories` not a proper hook | ✅ Fixed 2026-06-01 |
 | 22 | 🟡 | `AnswerCard.tsx` | "Community Member" fallback message | 🚫 Won't-fix (intentional design) |
 | 23 | 🟠 | `admin.analytics.tsx` | Status filter never initialises on load (enabled: false) | ✅ Fixed 2026-06-05 — no such guard in current code; admin queries fire immediately on mount |

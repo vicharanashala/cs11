@@ -6,6 +6,7 @@ interface QueryQueueItem {
   questionId: string
   title: string
   askedBy: { name: string }
+  category?: { name: string; slug: string; color: string }
   createdAt: string
   answerCount: number
   status: string
@@ -114,9 +115,26 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
                 </svg>
                 {item.answerCount} answer{item.answerCount !== 1 ? 's' : ''}
               </span>
+              {item.category?.name && (
+                <span
+                  className="px-1.5 py-0.5 rounded text-xs font-medium"
+                  style={{
+                    backgroundColor: item.category.color + '22',
+                    color: item.category.color,
+                  }}
+                >
+                  {item.category.name}
+                </span>
+              )}
               <span
                 className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                  item.status === 'open' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
+                  item.status === 'open'
+                    ? 'bg-blue-100 text-blue-700'
+                    : item.status === 'in_progress'
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : item.status === 'resolved'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-gray-100 text-gray-600'
                 }`}
               >
                 {item.status.replace('_', ' ')}

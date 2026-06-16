@@ -2,7 +2,7 @@ import { Controller, Get, Patch, Post, Body, Param, Query, UseGuards, Request } 
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
 import { AdminService } from './admin.service'
 import { AnalyticsService } from './analytics.service'
-import { JwtGuard, AdminGuard } from '../auth/guards'
+import { JwtGuard, AdminGuard, SuperadminGuard } from '../auth/guards'
 import { QuestionStatusCounts, CategoryBreakdownItem, TopContributor } from './analytics.service'
 
 @ApiTags('admin')
@@ -15,12 +15,25 @@ export class AdminController {
     private readonly analyticsService: AnalyticsService,
   ) {}
 
+  @Get('system-health')
+  @UseGuards(JwtGuard, SuperadminGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'System health snapshot — superadmin only' })
+  getSystemHealth() {
+    return this.adminService.getSystemHealth()
+  }
+
   @Get('queries')
   @ApiOperation({ summary: 'Admin resolution queue — open and in_progress questions only, oldest first' })
-  getQueryQueue(@Query('page') page?: string, @Query('limit') limit?: string) {
+  getQueryQueue(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('category') category?: string,
+  ) {
     return this.adminService.getQueryQueue({
       page: page ? parseInt(page) : undefined,
       limit: limit ? parseInt(limit) : undefined,
+      category,
     })
   }
 

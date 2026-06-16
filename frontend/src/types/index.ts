@@ -7,6 +7,7 @@ export interface User {
   email: string
   role: UserRole
   reputation: number
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }
@@ -150,6 +151,31 @@ export interface PaginatedResponse<T> {
   total: number
   page: number
   limit: number
+}
+
+// Reputation
+
+export type ReputationEventName =
+  | 'answer_upvoted'
+  | 'answer_downvote_reversed'
+  | 'answer_accepted'
+  | 'question_answered'
+  | 'faq_contributed'
+  | 'answer_downvoted'
+
+export interface ReputationEvent {
+  _id: string
+  event: ReputationEventName
+  points: number
+  targetId: string
+  targetModel: 'Answer' | 'Question' | 'FAQ'
+  description: string
+  createdAt: string
+}
+
+export interface ReputationHistory {
+  reputation: number
+  history: PaginatedResponse<ReputationEvent>
 }
 
 // Admin query-insights (Chunk 13)

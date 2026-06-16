@@ -10,6 +10,7 @@ import { UsersModule } from '../users/users.module'
 import { AdminModule } from '../admin/admin.module'
 import { MetaModule } from '../admin/meta.module'
 import { EventsModule } from '../events/events.module'
+import { ReputationModule } from '../reputation/reputation.module'
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { EventsModule } from '../events/events.module'
     AdminModule,
     MetaModule,
     EventsModule,
+    ReputationModule,
   ],
   providers: [AnswersService],
   controllers: [AnswersController],
