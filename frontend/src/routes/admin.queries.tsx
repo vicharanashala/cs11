@@ -13,14 +13,11 @@ interface SearchState {
 export function AdminQueriesPage() {
   const queryClient = useQueryClient()
   const search = useSearch({ from: '/admin/queries' } as any) as SearchState
-  const [activeCategory, setActiveCategory] = useState<string | undefined>(search.category)
-
   const [page, setPage] = useState(1)
   const { on, off } = useSocket()
 
-  // Keep local category in sync when URL changes (e.g. browser back/forward)
+  // Reset to page 1 when category changes
   useEffect(() => {
-    setActiveCategory(search.category)
     setPage(1)
   }, [search.category])
 
@@ -34,20 +31,28 @@ export function AdminQueriesPage() {
   }, [on, off, queryClient])
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['admin-queries', page, activeCategory],
+    queryKey: ['admin-queries', page, search.category],
     queryFn: async () => {
       const params: Record<string, string> = { page: String(page), limit: '20' }
-      if (activeCategory) params.category = activeCategory
+      if (search.category) params.category = search.category
       const { data: res } = await api.get('/admin/queries', { params })
       return res as { data: any[]; totalCount: number; page: number }
     },
   })
 
   function handleResolved(questionId: string) {
-    queryClient.setQueryData<{ data: any[]; totalCount: number; page: number }>(['admin-queries', page, activeCategory], (old) => {
-      if (!old) return old
-      return { ...old, data: old.data.filter((q: any) => q.questionId !== questionId) }
-    })
+    queryClient.setQueryData<{ data: any[]; totalCount: number; page: number }>(
+      ['admin-queries', page, search.category],
+      (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.filter(
+            (q: any) => (q.questionId ?? q._id) !== questionId
+          ),
+        }
+      }
+    )
   }
 
   const totalPages = data ? Math.ceil(data.totalCount / 20) : 0
@@ -76,7 +81,10 @@ export function AdminQueriesPage() {
       {isLoading && (
         <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+            <div
+              key={i}
+              className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse"
+            >
               <div className="h-5 bg-gray-200 rounded w-1/2 mb-2" />
               <div className="h-3 bg-gray-100 rounded w-1/3" />
             </div>
@@ -88,7 +96,9 @@ export function AdminQueriesPage() {
         <div className="text-center py-16">
           <div className="text-4xl mb-3">✅</div>
           <p className="text-gray-500 font-medium">Queue is clear!</p>
-          <p className="text-sm text-gray-400 mt-1">All open questions have been resolved.</p>
+          <p className="text-sm text-gray-400 mt-1">
+            All open questions have been resolved.
+          </p>
         </div>
       )}
 
@@ -96,7 +106,11 @@ export function AdminQueriesPage() {
         <>
           <div className="space-y-3">
             {data.data.map((item) => (
-              <QueryCard key={item.questionId} item={item} onResolved={handleResolved} />
+              <QueryCard
+                key={item.questionId ?? item._id}
+                item={item}
+                onResolved={handleResolved}
+              />
             ))}
           </div>
 

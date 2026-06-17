@@ -4,12 +4,13 @@ import api from '@/lib/api'
 
 interface QueryQueueItem {
   questionId: string
+  _id?: string
   title: string
   askedBy: { name: string }
   category?: { name: string; slug: string; color: string }
   createdAt: string
   answerCount: number
-  status: string
+  status?: string
 }
 
 interface PromoteModalData {
@@ -32,6 +33,9 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
   const [promoteTags, setPromoteTags] = useState('')
   const [toast, setToast] = useState<string | null>(null)
 
+  // Resolve using whichever id field the backend returned
+  const resolveId = item.questionId ?? item._id ?? ''
+
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(null), 3000)
@@ -40,12 +44,12 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
   // Resolve mutation
   const resolveMutation = useMutation({
     mutationFn: (body: string) =>
-      api.patch(`/admin/queries/${item.questionId}/resolve`, { responseBody: body }),
+      api.patch(`/admin/queries/${resolveId}/resolve`, { responseBody: body }),
     onSuccess: () => {
       showToast('Question resolved successfully.')
       setResponseBody('')
       setExpanded(false)
-      onResolved(item.questionId)
+      onResolved(resolveId)
     },
     onError: () => showToast('Failed to resolve. Please try again.'),
   })
@@ -53,7 +57,7 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
   // Promote mutation
   const promoteMutation = useMutation({
     mutationFn: (payload: PromoteModalData) =>
-      api.post(`/questions/${item.questionId}/promote-faq`, payload),
+      api.post(`/questions/${resolveId}/promote-faq`, payload),
     onSuccess: () => {
       showToast('Question promoted to FAQ.')
       setShowPromoteModal(false)
@@ -78,6 +82,17 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
     promoteMutation.mutate({ title: promoteTitle, category: promoteCategory, tags })
   }
 
+  // Safe status label — guards against undefined
+  const statusLabel = (item.status ?? 'open').replace('_', ' ')
+  const statusClass =
+    item.status === 'open'
+      ? 'bg-blue-100 text-blue-700'
+      : item.status === 'in_progress'
+      ? 'bg-yellow-100 text-yellow-700'
+      : item.status === 'resolved'
+      ? 'bg-green-100 text-green-700'
+      : 'bg-gray-100 text-gray-600'
+
   return (
     <>
       {/* Toast */}
@@ -94,7 +109,8 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
             <h3 className="font-semibold text-gray-900 truncate">{item.title}</h3>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
               <span>
-                Asked by <span className="font-medium">{item.askedBy?.name ?? 'Unknown'}</span>
+                Asked by{' '}
+                <span className="font-medium">{item.askedBy?.name ?? 'Unknown'}</span>
               </span>
               <span>·</span>
               <span>{new Date(item.createdAt).toLocaleDateString()}</span>
@@ -113,31 +129,21 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                   />
                 </svg>
-                {item.answerCount} answer{item.answerCount !== 1 ? 's' : ''}
+                {item.answerCount ?? 0} answer{(item.answerCount ?? 0) !== 1 ? 's' : ''}
               </span>
               {item.category?.name && (
                 <span
                   className="px-1.5 py-0.5 rounded text-xs font-medium"
                   style={{
-                    backgroundColor: item.category.color + '22',
-                    color: item.category.color,
+                    backgroundColor: (item.category.color ?? '#6366f1') + '22',
+                    color: item.category.color ?? '#6366f1',
                   }}
                 >
                   {item.category.name}
                 </span>
               )}
-              <span
-                className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                  item.status === 'open'
-                    ? 'bg-blue-100 text-blue-700'
-                    : item.status === 'in_progress'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : item.status === 'resolved'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                {item.status.replace('_', ' ')}
+              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${statusClass}`}>
+                {statusLabel}
               </span>
             </div>
           </div>
@@ -196,7 +202,9 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title
+                </label>
                 <input
                   type="text"
                   value={promoteTitle}
@@ -206,7 +214,9 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category ID
+                </label>
                 <input
                   type="text"
                   value={promoteCategory}
@@ -217,7 +227,9 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tags (comma-separated)
+                </label>
                 <input
                   type="text"
                   value={promoteTags}
@@ -237,7 +249,11 @@ export function QueryCard({ item, onResolved }: QueryCardProps) {
               </button>
               <button
                 onClick={handlePromote}
-                disabled={!promoteTitle.trim() || !promoteCategory.trim() || promoteMutation.isPending}
+                disabled={
+                  !promoteTitle.trim() ||
+                  !promoteCategory.trim() ||
+                  promoteMutation.isPending
+                }
                 className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {promoteMutation.isPending ? 'Promoting...' : 'Promote'}
